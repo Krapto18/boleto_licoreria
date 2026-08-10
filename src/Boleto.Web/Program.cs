@@ -1,0 +1,174 @@
+using Boleto.Data;
+using Boleto.Web.Models;
+using Boleto.Web.Services;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// ── Base de datos ────────────────────────────────────────────────
+// La cadena viene de App Settings en Azure, nunca de appsettings.json.
+var cs = builder.Configuration.GetConnectionString("Sql")
+         ?? throw new InvalidOperationException(
+             "Falta la cadena de conexión 'Sql'. En Azure va en App Settings " +
+             "como ConnectionStrings__Sql; en local, con dotnet user-secrets.");
+
+// Factory porque el servicio de catálogo lo usa fuera del scope de una request.
+builder.Services.AddDbContextFactory<BoletoDbContext>(o =>
+    o.UseSqlServer(cs, sql =>
+    {
+        // Azure SQL corta conexiones ociosas. Sin esto se ven errores intermitentes.
+        sql.EnableRetryOnFailure(maxRetryCount: 5,
+                                 maxRetryDelay: TimeSpan.FromSeconds(10),
+                                 errorNumbersToAdd: null);
+        sql.CommandTimeout(30);
+    }));
+
+// ── Identidad del panel ──────────────────────────────────────────
+builder.Services.AddDefaultIdentity<IdentityUser>(o =>
+{
+    o.SignIn.RequireConfirmedAccount = false;
+    o.Password.RequiredLength = 12;
+    o.Lockout.MaxFailedAccessAttempts = 5;
+    o.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
+})
+.AddEntityFrameworkStores<BoletoDbContext>();
+
+builder.Services.ConfigureApplicationCookie(o =>
+{
+    o.LoginPath = "/cuenta/login";
+    o.AccessDeniedPath = "/cuenta/login";
+    o.ExpireTimeSpan = TimeSpan.FromHours(8);
+    o.SlidingExpiration = true;
+    // En Development se permite http o el login no funciona en local.
+    o.Cookie.SecurePolicy = builder.Environment.IsDevelopment()
+        ? CookieSecurePolicy.SameAsRequest
+        : CookieSecurePolicy.Always;
+    o.Cookie.HttpOnly = true;
+    o.Cookie.SameSite = SameSiteMode.Lax;
+});
+
+// El panel manda el token por cabecera, no en un form. Sin esto, 400.
+builder.Services.AddAntiforgery(o => o.HeaderName = "RequestVerificationToken");
+
+builder.Services.AddMemoryCache();
+builder.Services.AddSingleton<CatalogoService>();
+
+/* Almacenamiento de imágenes: Blob si hay cadena configurada, disco
+   local si no. Así en desarrollo se prueba el flujo completo sin
+   emuladores ni contenedores, y al desplegar no cambia nada de código. */
+var usaBlob = !string.IsNullOrWhiteSpace(builder.Configuration.GetConnectionString("Blob"));
+if (usaBlob) builder.Services.AddSingleton<IAlmacen, AlmacenBlob>();
+else         builder.Services.AddSingleton<IAlmacen, AlmacenLocal>();
+
+/* Tope de subida. Coincide con el que valida AlmacenService, para que
+   un archivo grande se rechace con un mensaje claro y no con un error
+   genérico del servidor. */
+builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(o =>
+{
+    o.MultipartBodyLengthLimit = 2 * 1024 * 1024;
+});
+builder.Services.AddResponseCompression(o => o.EnableForHttps = true);
+
+builder.Services.AddRazorPages(o =>
+{
+    o.Conventions.AuthorizeFolder("/Panel");
+    o.Conventions.AllowAnonymousToPage("/Cuenta/Login");
+});
+
+builder.Services.AddHealthChecks()
+    .AddDbContextCheck<BoletoDbContext>("sql", HealthStatus.Degraded);
+
+// App Service termina el TLS antes de llegar a Kestrel.
+builder.Services.Configure<ForwardedHeadersOptions>(o =>
+{
+    o.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    o.KnownNetworks.Clear();
+    o.KnownProxies.Clear();
+});
+
+var app = builder.Build();
+
+app.UseForwardedHeaders();
+
+if (!app.Environment.IsDevelopment())
+{
+    app.UseExceptionHandler("/Error");
+    app.UseHsts();
+}
+
+app.UseHttpsRedirection();
+app.UseResponseCompression();
+
+app.UseStaticFiles(new StaticFileOptions
+{
+    OnPrepareResponse = ctx =>
+    {
+        var path = ctx.File.Name;
+        // El service worker debe revalidarse siempre o el usuario queda pegado
+        // a una versión vieja del sitio.
+        ctx.Context.Response.Headers.CacheControl =
+            path.Equals("sw.js", StringComparison.OrdinalIgnoreCase)
+                ? "no-cache"
+                : "public, max-age=604800";
+    }
+});
+
+/* En modo disco local, las imágenes subidas se sirven bajo /media con
+   la misma forma de URL que tendrían en Blob. En producción con Blob
+   esta ruta no se usa. */
+if (!usaBlob)
+{
+    var mediaDir = Path.Combine(app.Environment.ContentRootPath, "media");
+    Directory.CreateDirectory(mediaDir);
+    app.UseStaticFiles(new StaticFileOptions
+    {
+        FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(mediaDir),
+        RequestPath = "/media",
+        OnPrepareResponse = ctx =>
+            ctx.Context.Response.Headers.CacheControl = "public, max-age=31536000"
+    });
+}
+
+app.UseRouting();
+app.UseAuthentication();
+app.UseAuthorization();
+app.MapRazorPages();
+
+// ── API del catálogo: la usa el service worker de la PWA ─────────
+app.MapGet("/api/catalogo", async (CatalogoService svc, CancellationToken ct) =>
+        Results.Ok(await svc.ObtenerAsync(ct)))
+   .AllowAnonymous()
+   .WithName("Catalogo");
+
+// Always On de App Service pega acá cada pocos minutos.
+app.MapHealthChecks("/health").AllowAnonymous();
+
+// ── Migraciones y catálogo inicial ───────────────────────────────
+// Corre en el arranque. Es idempotente: nunca pisa precios editados.
+using (var scope = app.Services.CreateScope())
+{
+    var sp = scope.ServiceProvider;
+    var log = sp.GetRequiredService<ILoggerFactory>().CreateLogger("Seed");
+    try
+    {
+        var factory = sp.GetRequiredService<IDbContextFactory<BoletoDbContext>>();
+        await using var db = await factory.CreateDbContextAsync();
+        await SeedData.InicializarAsync(
+            db,
+            sp.GetRequiredService<UserManager<IdentityUser>>(),
+            app.Configuration["Admin:Email"] ?? "",
+            app.Configuration["Admin:Password"] ?? "");
+    }
+    catch (Exception ex)
+    {
+        // Que falle el seed no debe tumbar el sitio: la web pública puede
+        // seguir sirviendo desde caché.
+        log.LogError(ex, "Falló la inicialización de la base");
+    }
+}
+
+app.Run();

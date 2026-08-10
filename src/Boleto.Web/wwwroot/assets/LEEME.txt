@@ -1,0 +1,4 @@
+logo.svg      placeholder — reemplazar por el oficial del cliente
+favicon.svg   placeholder
+og.png        1200x630 · imagen que se ve al compartir el link por WhatsApp
+productos/    fotos de producto (webp, fondo blanco, ~600x600, <60 KB)

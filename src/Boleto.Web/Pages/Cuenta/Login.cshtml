@@ -1,0 +1,48 @@
+@page "/cuenta/login"
+@model Boleto.Web.Pages.Cuenta.LoginModel
+<!DOCTYPE html>
+<html lang="es-PE">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Entrar · Panel</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="~/assets/favicon.svg" type="image/svg+xml">
+<link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@@6..96,700&family=Jost:wght@@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="~/css/admin.css" asp-append-version="true">
+</head>
+<body class="login">
+  <main class="login__box">
+    <div class="logo">
+      <span class="logo__mark">B</span>
+      <span class="logo__txt">Panel<small>Boleto Licorería</small></span>
+    </div>
+
+    <h1>Entrar</h1>
+
+    @if (Model.Error is not null)
+    {
+        <p class="error" role="alert">@Model.Error</p>
+    }
+
+    <form method="post">
+      <label for="Input_Email">Correo</label>
+      <input asp-for="Input.Email" id="Input_Email" type="email"
+             autocomplete="username" autofocus required>
+      <span asp-validation-for="Input.Email" class="campo-error"></span>
+
+      <label for="Input_Password">Contraseña</label>
+      <input asp-for="Input.Password" id="Input_Password" type="password"
+             autocomplete="current-password" required>
+      <span asp-validation-for="Input.Password" class="campo-error"></span>
+
+      <label class="check">
+        <input asp-for="Input.Recordarme" type="checkbox">
+        <span>Mantener la sesión abierta</span>
+      </label>
+
+      <button type="submit" class="btn btn--pub">Entrar</button>
+    </form>
+  </main>
+</body>
+</html>

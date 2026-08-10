@@ -1,0 +1,165 @@
+@page "/panel"
+@model Boleto.Web.Pages.Panel.IndexModel
+<!DOCTYPE html>
+<html lang="es-PE">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Panel · Boleto Licorería</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="~/assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@@6..96,700&family=Jost:wght@@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="~/css/admin.css" asp-append-version="true">
+</head>
+<body>
+
+<header class="top">
+  <div class="top__in">
+    <div class="logo">
+      <span class="logo__mark">B</span>
+      <span class="logo__txt">Panel<small>Boleto Licorería</small></span>
+    </div>
+
+    <!-- Nielsen #1 · el estado del borrador siempre visible -->
+    <span class="estado" id="estado" data-cambios="false">Sin cambios</span>
+
+    <a class="link" href="/" target="_blank" rel="noopener">Ver la web ↗</a>
+    <form method="post" asp-page="/Cuenta/Logout" class="salir">
+      <button type="submit" class="link">Salir</button>
+    </form>
+  </div>
+</header>
+
+<main class="main">
+
+  <!-- Guía de uso, sin manual aparte -->
+  <section class="ayuda">
+    <h1>Precios y stock</h1>
+    <p>
+      Cambia lo que necesites. Se guardan como borrador en este dispositivo y
+      <b>recién aparecen en la web cuando le das a Publicar</b>.
+    </p>
+  </section>
+
+  <!-- Pestañas · la tarea diaria (precios) queda de entrada -->
+  <div class="tabs" role="tablist">
+    <button class="tab" role="tab" data-tab="precios"  aria-selected="true">Precios y stock</button>
+    <button class="tab" role="tab" data-tab="productos" aria-selected="false">Productos y fotos</button>
+    <button class="tab" role="tab" data-tab="banners"  aria-selected="false">Banners</button>
+  </div>
+
+  <section id="panel-precios" class="panel">
+
+  <!-- Herramientas -->
+  <section class="tools">
+    <label class="search">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+      <input type="search" id="q" placeholder="Buscar producto…" aria-label="Buscar producto">
+    </label>
+
+    <div class="chips" id="chips" role="group" aria-label="Filtrar"></div>
+
+    <div class="masivo">
+      <button class="mini" id="subir">Subir todos +1%</button>
+      <button class="mini" id="bajar">Bajar todos −1%</button>
+      <button class="mini" id="verCambios" hidden>Ver solo los cambiados</button>
+    </div>
+  </section>
+
+  <p class="count" id="count" role="status"></p>
+
+  <div class="tabla" id="tabla"></div>
+  <p class="empty" id="empty" hidden>No hay productos con ese filtro.</p>
+
+  </section>
+
+  <!-- ══════════ PRODUCTOS Y FOTOS ══════════ -->
+  <section id="panel-productos" class="panel" hidden>
+    @if (Model.ModoAlmacen == "disco local")
+    {
+      <p class="aviso aviso--dev">Modo desarrollo: las imágenes se guardan en disco, no en la nube.</p>
+    }
+    <p class="ayuda__p">
+      Toca una foto para reemplazarla. Formatos JPG, PNG o WebP, hasta 2 MB.
+      Se recomienda 600×600 px con fondo transparente.
+    </p>
+
+    <label class="search">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+      <input type="search" id="qFotos" placeholder="Buscar producto…" aria-label="Buscar producto">
+    </label>
+
+    <div class="fotos" id="fotos"></div>
+
+    <div class="nuevo">
+      <h2>Agregar producto</h2>
+      <div class="nuevo__grid">
+        <label>Identificador<input id="nId" placeholder="jw-red" maxlength="40"><small>Solo letras, números y guiones</small></label>
+        <label>Nombre<input id="nNombre" placeholder="Johnnie Walker Red Label" maxlength="120"></label>
+        <label>Presentación<input id="nPres" placeholder="750 ml" maxlength="40"></label>
+        <label>Categoría<input id="nCat" placeholder="Whisky" maxlength="40"></label>
+        <label>Grupo<select id="nGrupo"></select></label>
+        <label>Precio botella<input id="nPrecio" type="number" step="0.10" min="0" inputmode="decimal"></label>
+        <label>Precio combo<input id="nCombo" type="number" step="0.10" min="0" inputmode="decimal"><small>Vacío si no tiene combo</small></label>
+        <label>Acompañante<input id="nAco" placeholder="Gaseosa 1.5 L" maxlength="60"></label>
+        <label>Hielo<input id="nHielo" placeholder="Hielo 3 kg" maxlength="60"></label>
+        <label class="nuevo__chk"><input type="checkbox" id="nPromo"><span>Aplica a la Coca Cola gratis</span></label>
+      </div>
+      <button class="btn btn--pub" id="crearProducto">Crear producto</button>
+    </div>
+  </section>
+
+  <!-- ══════════ BANNERS ══════════ -->
+  <section id="panel-banners" class="panel" hidden>
+    <p class="ayuda__p">
+      Hasta 5 banners para el carrusel de la página. Todos deben tener el
+      mismo tamaño o el carrusel salta. Se recomienda 1200×500 px.
+    </p>
+    <div class="banners-adm" id="bannersAdm"></div>
+    <button class="btn btn--pub" id="guardarBanners">Guardar banners</button>
+  </section>
+
+  <!-- Resumen antes de publicar -->
+  <section class="resumen" id="resumen" hidden>
+    <h2>Cambios pendientes</h2>
+    <div id="listaCambios"></div>
+  </section>
+
+</main>
+
+<!-- Barra de acciones · zona del pulgar -->
+<div class="actionbar" id="actionbar" data-on="false">
+  <div class="actionbar__in">
+    <span class="actionbar__sum">
+      <b id="nCambios">0</b>
+      <span>cambios sin publicar</span>
+    </span>
+    <button class="btn btn--ghost" id="descartar">Descartar</button>
+    <button class="btn btn--pub" id="publicar">Publicar en la web</button>
+  </div>
+</div>
+
+<!-- Nielsen #5 · confirmación solo para lo irreversible -->
+<div class="modal" id="modal" data-on="false" role="dialog" aria-modal="true" aria-labelledby="modalT">
+  <div class="modal__box">
+    <h2 id="modalT">¿Descartar todos los cambios?</h2>
+    <p>Los precios y el stock vuelven a como estaban. Esto no se puede deshacer.</p>
+    <div class="modal__f">
+      <button class="btn btn--ghost" id="modalNo">Cancelar</button>
+      <button class="btn btn--red" id="modalSi">Sí, descartar</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite" data-on="false">
+  <span id="toastTxt"></span>
+  <button id="undo">Deshacer</button>
+</div>
+
+<script>@Html.Raw(Model.CatalogoJs)</script>
+<script src="~/js/admin.js" asp-append-version="true"></script>
+@Html.AntiForgeryToken()
+</body>
+</html>

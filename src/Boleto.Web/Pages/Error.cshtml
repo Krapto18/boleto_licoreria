@@ -1,0 +1,31 @@
+@page
+@model Boleto.Web.Pages.ErrorModel
+<!DOCTYPE html>
+<html lang="es-PE">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Algo falló · Boleto Licorería</title>
+<link rel="icon" href="~/assets/favicon.svg" type="image/svg+xml">
+<link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@@6..96,700&family=Jost:wght@@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="~/css/styles.css" asp-append-version="true">
+</head>
+<body>
+  <section class="close">
+    <div class="wrap">
+      <h1 class="display close__h">Se nos cayó algo</h1>
+      <p class="close__p">
+        La página no cargó bien, pero la tienda sigue abierta.
+        Escríbenos y te atendemos igual.
+      </p>
+      <a class="btn btn--wa btn--xl" href="https://wa.me/51933851832" target="_blank" rel="noopener">
+        Escribir por WhatsApp
+      </a>
+      @if (Model.MostrarRequestId)
+      {
+          <p class="legal" style="margin-top:28px">Código del error: <code>@Model.RequestId</code></p>
+      }
+    </div>
+  </section>
+</body>
+</html>

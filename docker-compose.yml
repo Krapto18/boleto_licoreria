@@ -1,0 +1,16 @@
+# SQL Server local para desarrollar sin gastar en Azure.
+#   docker compose up -d
+#   dotnet user-secrets set "ConnectionStrings:Sql" "Server=localhost,1433;Database=boleto;User Id=sa;Password=Boleto_Local_2026;TrustServerCertificate=True"
+services:
+  sql:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "Boleto_Local_2026"
+      MSSQL_PID: Developer
+    ports:
+      - "1433:1433"
+    volumes:
+      - sqldata:/var/opt/mssql
+volumes:
+  sqldata:

@@ -38,14 +38,23 @@ public class CatalogoService(
         var tienda = await db.Tienda.AsNoTracking().FirstOrDefaultAsync(ct) ?? new Tienda();
 
         var productos = await db.Productos.AsNoTracking()
+            .Where(p => p.Activo)          // los dados de baja no salen al catálogo
             .OrderBy(p => p.Orden)
             .Select(p => new ProductoDto
             {
-                Id = p.Id, N = p.Nombre, V = p.Presentacion,
-                C = p.Categoria, G = p.Grupo,
-                P = p.Precio, Combo = p.PrecioCombo,
-                Acompanante = p.ComboAcompanante, Hielo = p.ComboHielo,
-                Promo = p.Promo, Stock = p.Stock, Col = p.Color, Img = p.Imagen
+                Id = p.Id,
+                N = p.Nombre,
+                V = p.Presentacion,
+                C = p.Categoria,
+                G = p.Grupo,
+                P = p.Precio,
+                Combo = p.PrecioCombo,
+                Acompanante = p.ComboAcompanante,
+                Hielo = p.ComboHielo,
+                Promo = p.Promo,
+                Stock = p.Stock,
+                Col = p.Color,
+                Img = p.Imagen
             })
             .ToArrayAsync(ct);
 
@@ -114,6 +123,107 @@ public class CatalogoService(
 
     public void Invalidar() => cache.Remove(Key);
 
+    /// <summary>Todos los productos, incluidos los inactivos. Solo para el panel.</summary>
+    public async Task<Producto[]> TodosAsync(CancellationToken ct = default)
+    {
+        await using var db = await factory.CreateDbContextAsync(ct);
+        return await db.Productos.AsNoTracking().OrderBy(p => p.Orden).ToArrayAsync(ct);
+    }
+
+    /// <summary>
+    /// Edita un producto. El identificador no se toca: está atado a la
+    /// imagen y a la auditoría, y cambiarlo dejaría huérfanos los dos.
+    /// </summary>
+    public async Task ActualizarProductoAsync(
+        Producto d, string usuario, CancellationToken ct = default)
+    {
+        await using var db = await factory.CreateDbContextAsync(ct);
+        var p = await db.Productos.FirstOrDefaultAsync(x => x.Id == d.Id, ct)
+                ?? throw new InvalidOperationException("Ese producto no existe.");
+
+        if (string.IsNullOrWhiteSpace(d.Nombre))
+            throw new InvalidOperationException("Falta el nombre del producto.");
+        if (d.Precio <= 0)
+            throw new InvalidOperationException("El precio debe ser mayor a 0.");
+        if (d.PrecioCombo is { } c && c <= d.Precio)
+            throw new InvalidOperationException("El combo no puede costar menos que la botella.");
+        if (!Grupos.Contains(d.Grupo))
+            throw new InvalidOperationException($"El grupo \"{d.Grupo}\" no existe.");
+
+        var auditoria = new List<CambioPrecio>();
+        void Auditar(string campo, string antes, string ahora)
+        {
+            if (antes == ahora) return;
+            auditoria.Add(new CambioPrecio
+            {
+                ProductoId = p.Id,
+                ProductoNombre = p.Nombre,
+                Campo = campo,
+                ValorAnterior = Corta(antes),
+                ValorNuevo = Corta(ahora),
+                Usuario = usuario
+            });
+        }
+
+        Auditar("Nombre", p.Nombre, d.Nombre);
+        Auditar("Presentacion", p.Presentacion, d.Presentacion);
+        Auditar("Categoria", p.Categoria, d.Categoria);
+        Auditar("Grupo", p.Grupo, d.Grupo);
+        Auditar("Precio", p.Precio.ToString("0.00"), d.Precio.ToString("0.00"));
+        Auditar("PrecioCombo", p.PrecioCombo?.ToString("0.00") ?? "—",
+                               d.PrecioCombo?.ToString("0.00") ?? "—");
+        Auditar("Acompanante", p.ComboAcompanante, d.ComboAcompanante);
+        Auditar("Hielo", p.ComboHielo, d.ComboHielo);
+        Auditar("Promo", p.Promo ? "sí" : "no", d.Promo ? "sí" : "no");
+        Auditar("Orden", p.Orden.ToString(), d.Orden.ToString());
+
+        p.Nombre = d.Nombre;
+        p.Presentacion = d.Presentacion;
+        p.Categoria = d.Categoria;
+        p.Grupo = d.Grupo;
+        p.Precio = d.Precio;
+        p.PrecioCombo = d.PrecioCombo;
+        p.ComboAcompanante = d.ComboAcompanante;
+        p.ComboHielo = d.ComboHielo;
+        p.Promo = d.Promo;
+        p.Orden = d.Orden;
+        p.ActualizadoUtc = DateTime.UtcNow;
+
+        if (auditoria.Count > 0) db.CambiosPrecio.AddRange(auditoria);
+        await db.SaveChangesAsync(ct);
+        Invalidar();
+        log.LogInformation("{Usuario} editó {Id}: {N} campos", usuario, p.Id, auditoria.Count);
+    }
+
+    /// <summary>Da de baja o reactiva. Nunca se borra la fila.</summary>
+    public async Task CambiarActivoAsync(
+        string id, bool activo, string usuario, CancellationToken ct = default)
+    {
+        await using var db = await factory.CreateDbContextAsync(ct);
+        var p = await db.Productos.FirstOrDefaultAsync(x => x.Id == id, ct)
+                ?? throw new InvalidOperationException("Ese producto no existe.");
+
+        if (p.Activo == activo) return;
+
+        db.CambiosPrecio.Add(new CambioPrecio
+        {
+            ProductoId = p.Id,
+            ProductoNombre = p.Nombre,
+            Campo = "Activo",
+            ValorAnterior = p.Activo ? "activo" : "de baja",
+            ValorNuevo = activo ? "activo" : "de baja",
+            Usuario = usuario
+        });
+
+        p.Activo = activo;
+        p.ActualizadoUtc = DateTime.UtcNow;
+        await db.SaveChangesAsync(ct);
+        Invalidar();
+        log.LogInformation("{Usuario} {Accion} {Id}", usuario, activo ? "reactivó" : "dio de baja", id);
+    }
+
+    private static string Corta(string s) => s.Length > 20 ? s[..20] : s;
+
     /// <summary>Alta de un producto nuevo desde el panel.</summary>
     public async Task CrearProductoAsync(Producto p, CancellationToken ct = default)
     {
@@ -151,6 +261,16 @@ public class CatalogoService(
         log.LogInformation("Producto creado: {Id}", p.Id);
     }
 
+    /// <summary>
+    /// ¿Existe el producto? Se comprueba antes de subir una imagen, para no
+    /// dejar un blob huérfano cuando el identificador no corresponde a nada.
+    /// </summary>
+    public async Task<bool> ExisteAsync(string id, CancellationToken ct = default)
+    {
+        await using var db = await factory.CreateDbContextAsync(ct);
+        return await db.Productos.AnyAsync(p => p.Id == id, ct);
+    }
+
     /// <summary>Guarda la URL de la imagen de un producto.</summary>
     public async Task<string?> GuardarImagenAsync(string id, string url, CancellationToken ct = default)
     {
@@ -169,7 +289,9 @@ public class CatalogoService(
     /// <summary>Reemplaza la lista de banners. Máximo 5.</summary>
     public async Task GuardarBannersAsync(IEnumerable<BannerDto> banners, CancellationToken ct = default)
     {
-        var lista = banners.Where(b => !string.IsNullOrWhiteSpace(b.Img)).Take(5).ToList();
+        /* Sin Take(5): truncaba en silencio y dejaba el tope de abajo como
+           código muerto. Si llegan más de cinco, algo pasó — se avisa. */
+        var lista = banners.Where(b => !string.IsNullOrWhiteSpace(b.Img)).ToList();
         if (lista.Count > 5)
             throw new InvalidOperationException("El carrusel admite un máximo de 5 banners.");
 

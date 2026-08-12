@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # ══════════════════════════════════════════════════════════════
 # Infraestructura mínima de Boleto Licorería.
-# Costo verificado en el calculador (East US 2): $12.41 + $4.90 = $17.31/mes.
+# Costo verificado en el calculador (East US 2):
+#   App Service B1 $12.41 + Azure SQL Basic $4.90 + Storage (centavos)
 # Los precios cambian: vuelve a verificar antes de correrlo.
 # ══════════════════════════════════════════════════════════════
 set -euo pipefail
@@ -13,6 +14,7 @@ APP="boleto-licoreria"        # debe ser único en azurewebsites.net
 SQLSRV="sql-boleto-$RANDOM"
 SQLDB="boleto"
 SQLUSER="boletoadmin"
+STORAGE="stboleto$RANDOM"     # solo minúsculas y números, único global
 
 read -rsp "Contraseña para el admin de SQL: " SQLPASS; echo
 read -rp  "Correo del dueño (login del panel): " ADMIN_EMAIL
@@ -39,10 +41,28 @@ az sql db create -g "$RG" -s "$SQLSRV" -n "$SQLDB" \
 az sql server firewall-rule create -g "$RG" -s "$SQLSRV" \
   -n AllowAzureServices --start-ip-address 0.0.0.0 --end-ip-address 0.0.0.0 -o none
 
+# ── Storage para las fotos ───────────────────────────────────────
+# Sin esto, la app cae al almacén en disco y cada despliegue borra las
+# fotos que subió el dueño. Program.cs se niega a arrancar en Producción
+# si esta cadena no está, así que el olvido no pasa desapercibido.
+#
+# Acceso público de solo lectura a nivel blob: son fotos de catálogo que
+# ya se sirven en la web abierta. Escribir sigue exigiendo la clave.
+az storage account create -g "$RG" -n "$STORAGE" -l "$LOC" \
+  --sku Standard_LRS --kind StorageV2 --min-tls-version TLS1_2 \
+  --allow-blob-public-access true -o none
+
+BLOBCS=$(az storage account show-connection-string \
+  -g "$RG" -n "$STORAGE" --query connectionString -o tsv)
+
 CS="Server=tcp:${SQLSRV}.database.windows.net,1433;Database=${SQLDB};User ID=${SQLUSER};Password=${SQLPASS};Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;"
 
 az webapp config connection-string set -g "$RG" -n "$APP" \
   --connection-string-type SQLAzure --settings Sql="$CS" -o none
+
+# Tipo Custom: Blob no es una de las categorías con nombre de App Service.
+az webapp config connection-string set -g "$RG" -n "$APP" \
+  --connection-string-type Custom --settings Blob="$BLOBCS" -o none
 
 az webapp config appsettings set -g "$RG" -n "$APP" --settings \
   Admin__Email="$ADMIN_EMAIL" \
@@ -60,6 +80,7 @@ az webapp update -g "$RG" -n "$APP" --https-only true -o none
 echo
 echo "Listo:  https://${APP}.azurewebsites.net"
 echo "Panel:  https://${APP}.azurewebsites.net/panel"
+echo "Fotos:  cuenta de storage ${STORAGE}, contenedor 'media'"
 echo
 echo "Pendiente:"
 echo "  1. Borrar Admin__Password de App Settings tras el primer arranque."

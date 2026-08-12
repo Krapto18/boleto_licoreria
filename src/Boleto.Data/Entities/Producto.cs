@@ -8,9 +8,9 @@ public class Producto
     public string Id { get; set; } = "";
 
     [MaxLength(120)] public string Nombre { get; set; } = "";
-    [MaxLength(40)]  public string Presentacion { get; set; } = "";
-    [MaxLength(40)]  public string Categoria { get; set; } = "";
-    [MaxLength(60)]  public string Grupo { get; set; } = "";
+    [MaxLength(40)] public string Presentacion { get; set; } = "";
+    [MaxLength(40)] public string Categoria { get; set; } = "";
+    [MaxLength(60)] public string Grupo { get; set; } = "";
 
     public decimal Precio { get; set; }
     public decimal? PrecioCombo { get; set; }
@@ -26,8 +26,14 @@ public class Producto
     /// <summary>false = agotado. No se oculta en la web: se muestra sin poder pedirse.</summary>
     public bool Stock { get; set; } = true;
 
-    [MaxLength(9)]   public string Color { get; set; } = "#888888";
+    [MaxLength(9)] public string Color { get; set; } = "#888888";
     [MaxLength(200)] public string Imagen { get; set; } = "";
+
+    /* Baja lógica, no borrado. Si se eliminara la fila se perdería la
+       trazabilidad de la auditoría y el histórico de precios. Un
+       producto inactivo desaparece del catálogo pero conserva su
+       registro. */
+    public bool Activo { get; set; } = true;
 
     public int Orden { get; set; }
     public DateTime ActualizadoUtc { get; set; } = DateTime.UtcNow;

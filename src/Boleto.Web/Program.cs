@@ -2,6 +2,7 @@ using Boleto.Data;
 using Boleto.Web.Models;
 using Boleto.Web.Services;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -61,8 +62,20 @@ builder.Services.AddSingleton<CatalogoService>();
    local si no. Así en desarrollo se prueba el flujo completo sin
    emuladores ni contenedores, y al desplegar no cambia nada de código. */
 var usaBlob = !string.IsNullOrWhiteSpace(builder.Configuration.GetConnectionString("Blob"));
+
+/* Fuera de Development el disco local no es una alternativa: el despliegue
+   reemplaza el contenido del sitio y se llevaría por delante las fotos que
+   subió el dueño. Antes esto caía en silencio al almacén local y la pérdida
+   recién se notaba al desplegar la siguiente versión. Mejor no arrancar. */
+if (!usaBlob && !builder.Environment.IsDevelopment())
+    throw new InvalidOperationException(
+        "Falta la cadena de conexión 'Blob'. Fuera de desarrollo las imágenes " +
+        "deben ir a Azure Blob Storage: en disco se pierden en cada despliegue. " +
+        "Configúrala en App Settings como ConnectionStrings__Blob " +
+        "(infra/crear-azure.sh la deja lista).");
+
 if (usaBlob) builder.Services.AddSingleton<IAlmacen, AlmacenBlob>();
-else         builder.Services.AddSingleton<IAlmacen, AlmacenLocal>();
+else builder.Services.AddSingleton<IAlmacen, AlmacenLocal>();
 
 /* Tope de subida. Coincide con el que valida AlmacenService, para que
    un archivo grande se rechace con un mensaje claro y no con un error
@@ -80,13 +93,13 @@ builder.Services.AddRazorPages(o =>
 });
 
 builder.Services.AddHealthChecks()
-    .AddDbContextCheck<BoletoDbContext>("sql", HealthStatus.Degraded);
+    .AddDbContextCheck<BoletoDbContext>("sql", HealthStatus.Degraded, tags: ["db"]);
 
 // App Service termina el TLS antes de llegar a Kestrel.
 builder.Services.Configure<ForwardedHeadersOptions>(o =>
 {
     o.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
-    o.KnownNetworks.Clear();
+    o.KnownIPNetworks.Clear();
     o.KnownProxies.Clear();
 });
 
@@ -144,8 +157,16 @@ app.MapGet("/api/catalogo", async (CatalogoService svc, CancellationToken ct) =>
    .AllowAnonymous()
    .WithName("Catalogo");
 
-// Always On de App Service pega acá cada pocos minutos.
-app.MapHealthChecks("/health").AllowAnonymous();
+/* Always On pega acá cada pocos minutos. Es liveness puro: no consulta la
+   base. Con el chequeo de SQL incluido, el ping de mantenerse despierto
+   gastaba DTU cada pocos minutos las 24 horas — justo lo que el diseño de
+   caché en memoria evita para el tráfico real. */
+app.MapHealthChecks("/health", new HealthCheckOptions { Predicate = _ => false })
+   .AllowAnonymous();
+
+// Diagnóstico manual: este sí comprueba que la base responda.
+app.MapHealthChecks("/health/db", new HealthCheckOptions { Predicate = c => c.Tags.Contains("db") })
+   .AllowAnonymous();
 
 // ── Migraciones y catálogo inicial ───────────────────────────────
 // Corre en el arranque. Es idempotente: nunca pisa precios editados.

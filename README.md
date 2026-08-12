@@ -3,11 +3,6 @@
 Sitio público y panel de administración. ASP.NET Core Razor Pages, EF Core,
 Azure SQL. Un solo App Service.
 
-> **Sin compilar.** Este código se escribió sin SDK de .NET disponible, así que
-> no pasó por `dotnet build`. Espera algún ajuste de nombres de paquete o
-> firmas al primer intento. Todo lo demás (catálogo, precios, frontend) sí está
-> validado.
-
 ## Por qué Razor Pages y no Blazor
 
 El frontend ya existía, estaba probado y encierra todo el trabajo de IHC
@@ -32,35 +27,46 @@ Boleto.sln
     ├── Pages/Index           página pública (Razor)
     ├── Pages/Panel           panel, requiere login
     ├── Pages/Cuenta          login y salir
-    ├── Services/             CatalogoService con caché en memoria
-    └── wwwroot/              css, js, assets, sw.js, manifest
+    ├── Services/             CatalogoService con caché en memoria, IAlmacen
+    └── wwwroot/              css, js (app.js, panel.js), assets, sw.js, manifest
 infra/crear-azure.sh          provisiona todo con az CLI
 .github/workflows/            despliegue automático
-docker-compose.yml            SQL Server local para desarrollar
 ```
 
 ## Correr en local
 
-```bash
-docker compose up -d
+Contra tu instancia de SQL Server. La base `boleto` no hace falta crearla a
+mano: las migraciones la levantan al arrancar.
 
+```bash
 cd src/Boleto.Web
+
+# Instancia por defecto, autenticación de Windows
 dotnet user-secrets set "ConnectionStrings:Sql" \
-  "Server=localhost,1433;Database=boleto;User Id=sa;Password=Boleto_Local_2026;TrustServerCertificate=True"
+  "Server=localhost;Database=boleto;Trusted_Connection=True;TrustServerCertificate=True"
+
 dotnet user-secrets set "Admin:Email" "tucorreo@ejemplo.com"
 dotnet user-secrets set "Admin:Password" "UnaClaveLarga2026!"
 
 cd ../..
 dotnet tool install --global dotnet-ef        # si no lo tienes
-dotnet ef migrations add Inicial -p src/Boleto.Data -s src/Boleto.Web
 dotnet run --project src/Boleto.Web
 ```
 
-El seed corre solo al arrancar y es **idempotente**: inserta lo que falta y
-nunca pisa precios ya editados desde el panel.
+Si usas SQL Server Express, el servidor es `localhost\SQLEXPRESS`. Con usuario y
+contraseña en vez de autenticación integrada:
+`Server=localhost;Database=boleto;User Id=sa;Password=...;TrustServerCertificate=True`.
 
-- Sitio: `https://localhost:xxxx`
-- Panel: `https://localhost:xxxx/panel`
+Las migraciones ya están en el repo y se aplican solas al arrancar. El seed corre
+después y es **idempotente**: inserta lo que falta y nunca pisa precios ya
+editados desde el panel.
+
+- Sitio: `https://localhost:7181`
+- Panel: `https://localhost:7181/panel`
+
+En desarrollo no hace falta configurar Blob: las fotos que subas por el panel se
+guardan en `src/Boleto.Web/media` y se sirven bajo `/media`, con la misma forma
+de URL que tendrán en producción. El panel avisa en qué modo está.
 
 ## Desplegar en Azure
 
@@ -79,6 +85,17 @@ az webapp deployment list-publishing-profiles \
 Ese XML va en el repo como secreto `AZURE_PUBLISH_PROFILE` y cada push a `main`
 despliega solo.
 
+### Fotos: Blob obligatorio en producción
+
+`IAlmacen` tiene dos implementaciones y se elige sola según haya o no cadena de
+conexión `Blob`. **Fuera de Development, la app se niega a arrancar si esa cadena
+falta.** No es rigidez: el almacén en disco escribe dentro del contenido del
+sitio, y el despliegue lo reemplaza — las fotos que subió el dueño
+desaparecerían, y recién se notaría en el despliegue siguiente. Mejor fallar en
+el arranque, que es un problema de un minuto.
+
+`crear-azure.sh` crea la cuenta de storage y deja la cadena configurada.
+
 ## Costo mensual
 
 Verificado en el calculador de Azure, región **East US 2**:
@@ -87,9 +104,10 @@ Verificado en el calculador de Azure, región **East US 2**:
 |---|---|---|
 | App Service Plan | B1 Linux · 1 core, 1.75 GB | $12.41 |
 | Azure SQL | Single DB, DTU, Basic 5 DTU, 2 GB | $4.90 |
+| Storage (fotos) | StorageV2 Standard_LRS, <1 GB | ~$0.10 |
 | Certificado SSL administrado | — | $0.00 |
 | Dominio .com | pago anual de $11.99 | $1.00 |
-| **Total** | | **$18.31** |
+| **Total** | | **~$18.41** |
 
 Unos **S/ 68/mes** a 3.7 por dólar.
 
@@ -106,8 +124,8 @@ financies tú su infraestructura.
   compromiso anual. Si el proyecto crece, recién ahí evaluar Premium v3 reservado.
 - **Long Term Retention del SQL se cobra aparte.** Déjalo en 0: el
   Point-in-Time Restore ya viene incluido sin costo y alcanza de sobra.
-- **App Service y SQL en la misma región.** Separarlos agrega latencia y puede
-  facturar transferencia entre regiones.
+- **App Service, SQL y Storage en la misma región.** Separarlos agrega latencia y
+  puede facturar transferencia entre regiones.
 - **Chile Central** queda más cerca de Lima (~30 ms contra ~80 ms), pero suele
   costar más. La diferencia de latencia es imperceptible en esta landing porque
   el catálogo se sirve desde caché en memoria.
@@ -128,6 +146,11 @@ par de veces al mes.
 De paso: si la base se cae, el sitio público sigue sirviendo el último catálogo
 bueno. Para una tienda 24/7 eso es la diferencia entre vender y no vender.
 
+Por lo mismo hay dos health checks: `/health` es liveness puro y es el que pega
+Always On cada pocos minutos; `/health/db` sí comprueba la conexión a SQL y se
+consulta a mano. Con el chequeo de base en `/health`, el ping de mantenerse
+despierto gastaba DTU las 24 horas para nada.
+
 ## Seguridad del panel
 
 - Login con ASP.NET Core Identity, bloqueo tras 5 intentos.
@@ -135,6 +158,9 @@ bueno. Para una tienda 24/7 eso es la diferencia entre vender y no vender.
 - Token antiforgery por cabecera en el POST de publicar.
 - El servidor **revalida** todo: precio mayor a cero y combo más caro que la
   botella. No se confía en lo que manda el navegador.
+- Las imágenes se validan por firma de archivo, no por extensión. SVG queda
+  fuera a propósito: puede llevar JavaScript y se serviría desde una URL de
+  confianza.
 - Cada cambio queda en `CambiosPrecio` con usuario y fecha.
 
 **Después del primer arranque, borra `Admin__Password` de App Settings.** Ya
@@ -147,7 +173,8 @@ Capa extra opcional: Access Restrictions por IP sobre `/panel`.
 1. **Dirección del local** → activa el JSON-LD y hace que Google muestre
    "Abierto 24 horas". Es lo de mayor retorno que falta.
 2. Logo, favicon, `og.png` e íconos PWA oficiales (los actuales son placeholder).
-3. Fotos de producto en Blob Storage; llenar `Imagen` en cada producto.
+3. Subir las fotos de producto desde el panel una vez desplegado. Las que están
+   en `wwwroot/assets/productos` son de desarrollo; en Azure van al Blob.
 4. GA4 y Meta Pixel: se guardan en la tabla `Tienda` y se cargan solo si tienen
    valor.
 5. Migrar `Tienda` a una pantalla del panel (hoy se edita por SQL).

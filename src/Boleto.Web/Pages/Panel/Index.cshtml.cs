@@ -9,6 +9,9 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 namespace Boleto.Web.Pages.Panel;
 
 [Authorize]
+/* El tope va en la clase: RequestSizeLimit no se aplica a los métodos
+   de una página Razor, solo al modelo completo o globalmente. */
+[RequestSizeLimit(2 * 1024 * 1024)]
 public class IndexModel(CatalogoService svc, IAlmacen almacen, ILogger<IndexModel> log) : PageModel
 {
     public string CatalogoJs { get; private set; } = "";
@@ -23,8 +26,31 @@ public class IndexModel(CatalogoService svc, IAlmacen almacen, ILogger<IndexMode
         Encoder = System.Text.Encodings.Web.JavaScriptEncoder.Default
     };
 
+    /// <summary>Incluye los dados de baja: el panel los muestra en gris.</summary>
+    public string TodosJs { get; private set; } = "";
+
     public async Task OnGetAsync(CancellationToken ct)
     {
+        var todos = await svc.TodosAsync(ct);
+        TodosJs = "const TODOS=" + JsonSerializer.Serialize(todos.Select(p => new
+        {
+            id = p.Id,
+            n = p.Nombre,
+            v = p.Presentacion,
+            c = p.Categoria,
+            g = p.Grupo,
+            p = p.Precio,
+            combo = p.PrecioCombo,
+            aco = p.ComboAcompanante,
+            hie = p.ComboHielo,
+            promo = p.Promo,
+            stock = p.Stock,
+            activo = p.Activo,
+            orden = p.Orden,
+            img = p.Imagen,
+            col = p.Color
+        }), Json) + ";";
+
         var c = await svc.ObtenerAsync(ct);
         CatalogoJs =
             $"const CONFIG={JsonSerializer.Serialize(c.Config, Json)};" +
@@ -61,12 +87,16 @@ public class IndexModel(CatalogoService svc, IAlmacen almacen, ILogger<IndexMode
     }
 
     /// <summary>Sube o reemplaza la foto de un producto.</summary>
-    [RequestSizeLimit(2 * 1024 * 1024)]
     public async Task<IActionResult> OnPostImagenAsync(
         string id, IFormFile archivo, CancellationToken ct)
     {
         try
         {
+            /* Se comprueba antes de subir: si el identificador no existe,
+               el blob quedaría huérfano en la cuenta de storage. */
+            if (!await svc.ExisteAsync(id, ct))
+                return BadRequest(new { error = "Ese producto no existe." });
+
             var url = await almacen.GuardarAsync(archivo, "productos", id, ct);
             var anterior = await svc.GuardarImagenAsync(id, url, ct);
 
@@ -93,11 +123,17 @@ public class IndexModel(CatalogoService svc, IAlmacen almacen, ILogger<IndexMode
         {
             await svc.CrearProductoAsync(new Producto
             {
-                Id = d.Id, Nombre = d.Nombre, Presentacion = d.Presentacion,
-                Categoria = d.Categoria, Grupo = d.Grupo,
-                Precio = d.Precio, PrecioCombo = d.PrecioCombo,
-                ComboAcompanante = d.ComboAcompanante ?? "", ComboHielo = d.ComboHielo ?? "",
-                Promo = d.Promo, Stock = true,
+                Id = d.Id,
+                Nombre = d.Nombre,
+                Presentacion = d.Presentacion,
+                Categoria = d.Categoria,
+                Grupo = d.Grupo,
+                Precio = d.Precio,
+                PrecioCombo = d.PrecioCombo,
+                ComboAcompanante = d.ComboAcompanante ?? "",
+                ComboHielo = d.ComboHielo ?? "",
+                Promo = d.Promo,
+                Stock = true,
                 Color = string.IsNullOrWhiteSpace(d.Color) ? "#8A8A8A" : d.Color
             }, ct);
             return new JsonResult(new { ok = true, id = d.Id.Trim().ToLowerInvariant() });
@@ -111,7 +147,6 @@ public class IndexModel(CatalogoService svc, IAlmacen almacen, ILogger<IndexMode
     }
 
     /// <summary>Sube un banner del carrusel.</summary>
-    [RequestSizeLimit(2 * 1024 * 1024)]
     public async Task<IActionResult> OnPostBannerAsync(
         int indice, IFormFile archivo, CancellationToken ct)
     {
@@ -147,6 +182,58 @@ public class IndexModel(CatalogoService svc, IAlmacen almacen, ILogger<IndexMode
             return StatusCode(500, new { error = "No se pudieron guardar los banners." });
         }
     }
+
+    /// <summary>Edita un producto. El identificador no se toca.</summary>
+    public async Task<IActionResult> OnPostEditarAsync(
+        [FromBody] EditarProductoDto d, CancellationToken ct)
+    {
+        try
+        {
+            await svc.ActualizarProductoAsync(new Producto
+            {
+                Id = d.Id,
+                Nombre = d.Nombre,
+                Presentacion = d.Presentacion,
+                Categoria = d.Categoria,
+                Grupo = d.Grupo,
+                Precio = d.Precio,
+                PrecioCombo = d.PrecioCombo,
+                ComboAcompanante = d.ComboAcompanante ?? "",
+                ComboHielo = d.ComboHielo ?? "",
+                Promo = d.Promo,
+                Orden = d.Orden
+            }, User.Identity?.Name ?? "desconocido", ct);
+            return new JsonResult(new { ok = true });
+        }
+        catch (InvalidOperationException ex) { return BadRequest(new { error = ex.Message }); }
+        catch (Exception ex)
+        {
+            log.LogError(ex, "Error al editar {Id}", d.Id);
+            return StatusCode(500, new { error = "No se pudo guardar el producto." });
+        }
+    }
+
+    /// <summary>Da de baja o reactiva. Nunca borra.</summary>
+    public async Task<IActionResult> OnPostActivoAsync(
+        string id, bool activo, CancellationToken ct)
+    {
+        try
+        {
+            await svc.CambiarActivoAsync(id, activo, User.Identity?.Name ?? "desconocido", ct);
+            return new JsonResult(new { ok = true });
+        }
+        catch (InvalidOperationException ex) { return BadRequest(new { error = ex.Message }); }
+        catch (Exception ex)
+        {
+            log.LogError(ex, "Error al cambiar estado de {Id}", id);
+            return StatusCode(500, new { error = "No se pudo cambiar el estado." });
+        }
+    }
+
+    public record EditarProductoDto(
+        string Id, string Nombre, string Presentacion, string Categoria, string Grupo,
+        decimal Precio, decimal? PrecioCombo, string? ComboAcompanante, string? ComboHielo,
+        bool Promo, int Orden);
 
     public record NuevoProductoDto(
         string Id, string Nombre, string Presentacion, string Categoria, string Grupo,

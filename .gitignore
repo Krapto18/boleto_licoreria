@@ -14,3 +14,7 @@ src/Boleto.Web/media/
 # Dependencias de la prueba de navegador (tests/)
 node_modules/
 package-lock.json
+
+# Herramienta de fotos
+__pycache__/
+*.pyc

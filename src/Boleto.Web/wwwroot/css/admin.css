@@ -1362,9 +1362,13 @@ a {
 }
 
     /* Desmarcado = no se reparte ahí. Se atenúa en vez de desaparecer:
-       el dueño ve que existe y puede volver a activarlo. */
+       el dueño ve que existe y puede volver a activarlo.
+
+       .7 y no .45: medido, .45 dejaba el nombre del distrito en 4.03:1
+       contra el fondo, por debajo del 4.5 que pide WCAG AA. Se sigue
+       leyendo como apagado sin volverse ilegible. */
     .zona-adm[data-off="true"] {
-        opacity: .45;
+        opacity: .7;
     }
 
 .zona-adm__on {

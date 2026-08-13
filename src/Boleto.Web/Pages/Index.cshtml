@@ -211,15 +211,19 @@
     <div class="preview__in">
       <p class="preview__lbl">Esto es lo que se va a enviar</p>
       <div class="bubble" id="bubble"></div>
-      @if (Model.Catalogo.Config.Zonas.Length > 0)
-      {
-        <label class="distrito">
-          <span class="distrito__lbl">Tu distrito</span>
-          <select id="distritoSel" aria-label="Elige tu distrito"></select>
-        </label>
-      }
     </div>
   </div>
+  @* El distrito va FUERA de la vista previa, que está colapsada por
+     defecto y solo se abre sola una vez. Adentro, el cliente podía
+     mandar el pedido sin elegirlo y enterarse del delivery cuando la
+     tienda le respondía. Acá se ve siempre que hay algo en el pedido. *@
+  @if (Model.Catalogo.Config.Zonas.Length > 0)
+  {
+    <label class="distrito" id="distritoCaja" data-pendiente="true">
+      <span class="distrito__lbl" id="distritoLbl">Tu distrito</span>
+      <select id="distritoSel" aria-label="Elige tu distrito para calcular el delivery"></select>
+    </label>
+  }
   <div class="orderbar__in">
     <button class="peek" id="peek" aria-expanded="false" aria-controls="bubble">
       <span class="peek__sum"><b id="barTotal">S/ 0.00</b><span id="barCount">0 productos</span></span>

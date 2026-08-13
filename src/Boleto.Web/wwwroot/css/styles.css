@@ -255,7 +255,9 @@ a {
     display: flex;
     align-items: center;
     gap: 11px;
-    flex-shrink: 0
+    flex-shrink: 0;
+    /* En el nav es un enlace: el sello mide 40, el dedo pide 44. */
+    min-height: 44px
 }
 
 .logo__mark {
@@ -298,7 +300,12 @@ a {
     font-weight: 500
 }
 
+    /* El texto mide 21 px de alto; el dedo necesita 44. Se crece el área
+       táctil con padding, no la tipografía: se ve igual, se acierta mejor. */
     .nav__links a {
+        display: inline-flex;
+        align-items: center;
+        min-height: 44px;
         color: var(--tx-tenue);
         transition: color .18s
     }
@@ -429,7 +436,12 @@ a {
     margin-top: 16px
 }
 
+    /* Enlace deliberadamente discreto: no debe competir con el CTA verde
+       (Hick, un solo primario). Se le da el área táctil por padding para
+       no tener que agrandar la letra y romper esa jerarquía. */
     .cartel__sub a {
+        display: inline-block;
+        padding: 11px 4px;
         color: var(--tx-gris);
         font-size: .92rem;
         text-decoration: underline;
@@ -571,11 +583,20 @@ a {
     .search input {
         background: none;
         border: none;
-        outline: none;
         color: var(--tx-claro);
         width: 100%;
         font-size: .95rem
     }
+
+        /* Antes acá había un `outline: none` a secas. Ganaba por
+           especificidad al :focus-visible global y dejaba el buscador sin
+           ninguna señal de foco: quien navega con teclado no sabía dónde
+           estaba parado. Se devuelve el indicador, ceñido al input. */
+        .search input:focus-visible {
+            outline: 3px solid var(--rojo);
+            outline-offset: 4px;
+            border-radius: 4px
+        }
 
         .search input::placeholder {
             color: var(--tx-tenue)
@@ -589,7 +610,7 @@ a {
 }
 
 .chip {
-    min-height: 42px;
+    min-height: 44px;
     padding: 9px 18px;
     border-radius: 99px;
     font-size: .85rem;
@@ -889,7 +910,7 @@ a {
 
     .seg button {
         flex: 1;
-        min-height: 34px;
+        min-height: 44px;
         padding: 5px 4px;
         border-radius: 7px;
         font-size: .71rem;
@@ -953,7 +974,7 @@ a {
 
     .qty button {
         width: 44px;
-        min-height: 42px;
+        min-height: 44px;
         border-radius: 8px;
         color: var(--crema);
         font-size: 1.25rem;
@@ -1251,8 +1272,10 @@ a {
         pointer-events: auto
     }
 
+    /* Deshacer es la red de seguridad del pedido (Nielsen #3) y solo vive
+       4 segundos: es el peor momento para fallar el toque. */
     .toast button {
-        min-height: 36px;
+        min-height: 44px;
         padding: 6px 16px;
         border-radius: 99px;
         background: var(--marino);
@@ -1719,17 +1742,29 @@ img.i-wa {
    El costo de envío entra en el total antes de enviar el pedido:
    el cliente no se entera del cargo recién por WhatsApp.
    ══════════════════════════════════════════════════════════════ */
+/* Vive en la barra de pedido, fuera de la vista previa: el costo del
+   delivery entra en el total y el cliente tiene que poder verlo sin
+   desplegar nada. */
 .distrito {
     display: flex;
     align-items: center;
     gap: 12px;
-    margin-top: 14px;
-    padding: 10px 14px;
-    max-width: 460px;
+    margin: 0 auto;
+    padding: 8px 14px;
+    max-width: var(--max);
     background: rgba(247,241,227,.06);
-    border: 1px solid var(--marino-3);
-    border-radius: 12px;
+    border-bottom: 1px solid var(--marino-3);
 }
+
+    /* Mientras no eligió, el total todavía no es el total. Se señala sin
+       bloquear el envío: Nielsen #1 sin quitarle el control (#3). */
+    .distrito[data-pendiente="true"] {
+        background: rgba(200,16,46,.10)
+    }
+
+        .distrito[data-pendiente="true"] .distrito__lbl {
+            color: var(--crema)
+        }
 
 .distrito__lbl {
     font-size: .7rem;
@@ -1753,8 +1788,12 @@ img.i-wa {
     font-size: .9rem;
 }
 
-    .distrito select:focus {
-        outline: none;
+    /* El borde de 1px que había como única señal de foco no alcanza:
+       es demasiado sutil para el control que define el total del pedido.
+       Vuelve el outline de 3px del resto del sitio. */
+    .distrito select:focus-visible {
+        outline: 3px solid var(--rojo);
+        outline-offset: 3px;
         border-color: var(--rojo)
     }
 
@@ -1764,7 +1803,8 @@ img.i-wa {
 .foot__soc a {
     display: inline-flex;
     align-items: center;
-    gap: 8px
+    gap: 8px;
+    min-height: 44px
 }
 
 .i-soc {

@@ -353,3 +353,94 @@ usuario de verdad la necesita: ahí busca **su** distrito, no compara los 43.
 
 El servidor revalida todo igual —negativos, duplicados, montos absurdos— porque
 este número termina en el total que ve el cliente.
+
+---
+---
+
+# Nivel 5 — auditoría y correcciones
+
+Este bloque nace de medir lo que los niveles anteriores **afirmaban**. Tres
+afirmaciones del punto 10 resultaron falsas al comprobarlas en un navegador.
+Todas están corregidas y ahora se verifican solas en `tests/`.
+
+## 23. El distrito sale de la vista previa
+
+El selector vivía dentro de `.preview`, que arranca colapsada y se abre sola
+**una sola vez por sesión**. Si el cliente la cerraba, el botón "Enviar pedido"
+seguía activo y el mensaje salía sin delivery: total S/ 45.00 medido, sin línea
+de envío.
+
+Es exactamente el escenario que el punto 20 dice haber resuelto. El documento
+describía una intención; el código no la garantizaba.
+
+Ahora el selector es una fila propia de la barra de pedido, visible siempre que
+haya algo en el carrito. Y mientras no se elija:
+
+- La fila se tiñe de rojo tenue y la etiqueta dice **"Elige tu distrito"**.
+- El mensaje lleva **"(falta sumar el delivery)"** junto al total.
+
+**No se bloquea el botón de WhatsApp.** Nielsen #3: el control es del usuario.
+Alguien puede querer preguntar antes de decidir su zona, y la tienda prefiere
+ese mensaje incompleto a ningún mensaje. Se informa, no se impide.
+
+## 24. Objetivos táctiles: el documento decía 44 px y no era verdad
+
+Medido en móvil, con el área real del `<label>` contenedor y descartando lo
+invisible o inerte:
+
+| Elemento | Antes | Ahora |
+|---|---|---|
+| Filtros `.chip` | 42 px | 44 px |
+| Cantidad `+` / `−` | 42 px | 44 px |
+| Botella / Combo | 34 px | 44 px |
+| Enlaces del nav | 21 px | 44 px |
+| Teléfono del footer | 22 px | 44 px |
+| "o mira el catálogo…" | 22 px | 44 px |
+| Deshacer del aviso | 36 px | 44 px |
+| Logo del nav | 40 px | 44 px |
+
+En los enlaces de texto el área crece por `padding`, **no por tipografía**: si
+"o mira el catálogo…" creciera de tamaño competiría con el CTA verde, y eso
+rompería Hick y Von Restorff para arreglar Fitts.
+
+**Falso positivo que conviene registrar:** el botón flotante mide 39 px cuando el
+hero está a la vista, pero ahí tiene `opacity: 0` y `pointer-events: none`. No es
+un objetivo pequeño: no es un objetivo. Una auditoría que no descarta lo inerte
+inventa defectos.
+
+## 25. Foco visible: dos supresiones sin reemplazo
+
+El punto 10 decía "nunca suprimido". Había dos reglas que lo suprimían:
+
+- `.search input { outline: none }` — incondicional, y ganaba por especificidad
+  al `:focus-visible` global. El buscador no daba **ninguna** señal de foco.
+- `.distrito select:focus { outline: none; border-color: rojo }` — cambiaba un
+  borde de 1 px como única señal, en el control que define el total del pedido.
+
+Las dos ahora usan `:focus-visible` con el outline de 3 px del resto del sitio.
+
+## 26. La verificación de edad no contenía el foco
+
+Tenía `aria-modal="true"` y bloqueo de Escape, pero **el foco salía en la segunda
+tabulación**: con la pantalla de edad encima se llegaba al catálogo de atrás.
+
+`aria-modal` es una promesa a la tecnología asistiva, no un mecanismo. Ahora hay
+contención real, cíclica en ambos sentidos. Tratándose de la Ley N° 28681, la
+promesa tenía que ser verdad y no solo un atributo.
+
+## 27. Contraste del panel: la opacidad también cuenta
+
+El distrito desmarcado usaba `opacity: .45` sobre un texto de 14.48:1. La
+opacidad mezcla el color con el fondo: el contraste efectivo caía a **4.03:1**,
+bajo el 4.5 de AA. A `.7` queda en **7.85:1** y se sigue leyendo como apagado.
+
+Un ratio nominal alto no dice nada si algo lo atenúa después.
+
+## 28. Por qué esto se verifica solo
+
+Los defectos de los puntos 23 a 27 son invisibles desde el servidor: `curl`
+devuelve el mismo HTML con y sin ellos. `tests/` los comprueba en un navegador
+real, en escritorio y en móvil con touch, y falla si vuelven.
+
+Una afirmación de accesibilidad que nadie mide se convierte en falsa sin que
+nadie se entere.

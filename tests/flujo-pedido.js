@@ -139,10 +139,131 @@ async function probar(browser, perfil) {
   await ctx.close();
 }
 
+/* ══════════════════════════════════════════════════════════════
+   Accesibilidad. El documento de decisiones afirma tres cosas que
+   conviene medir y no suponer: 44 px de objetivo táctil, foco visible
+   nunca suprimido, y una verificación de edad de la que no se sale.
+   Las tres estaban incumplidas cuando se midieron por primera vez.
+   ══════════════════════════════════════════════════════════════ */
+async function accesibilidad(browser) {
+  console.log('\n=== ACCESIBILIDAD ===');
+
+  // ── Objetivos táctiles reales, en móvil ──
+  {
+    const ctx = await browser.newContext({ viewport: { width: 390, height: 844 },
+                                           hasTouch: true, isMobile: true });
+    const p = await ctx.newPage();
+    await p.goto(URL, { waitUntil: 'networkidle' });
+    if (await p.locator('#edadSi').isVisible().catch(() => false)) await p.click('#edadSi');
+    await p.click('.card:not(.card--out) .add');
+    await p.waitForTimeout(300);
+
+    const chicos = await p.evaluate(() => {
+      const out = [];
+      document.querySelectorAll('a,button,select,[role="tab"]').forEach((el) => {
+        const cs = getComputedStyle(el);
+        // Lo invisible o inerte no es un objetivo táctil
+        if (cs.visibility === 'hidden' || cs.display === 'none') return;
+        if (parseFloat(cs.opacity) === 0 || cs.pointerEvents === 'none') return;
+        let r = el.getBoundingClientRect();
+        if (!r.width || !r.height) return;
+        const lbl = el.closest('label');
+        if (lbl) { const l = lbl.getBoundingClientRect();
+                   r = { width: Math.max(r.width, l.width), height: Math.max(r.height, l.height) }; }
+        if (r.height < 44 || r.width < 44) {
+          out.push(`${el.tagName.toLowerCase()}${el.id ? '#' + el.id : ''} ` +
+                   `${Math.round(r.width)}x${Math.round(r.height)} "${(el.textContent || '').trim().slice(0, 18)}"`);
+        }
+      });
+      return [...new Set(out)];
+    });
+    ok(chicos.length === 0,
+       'todos los objetivos táctiles llegan a 44px' +
+       (chicos.length ? ` — faltan ${chicos.length}: ${chicos.slice(0, 5).join(' | ')}` : ''));
+    await ctx.close();
+  }
+
+  // ── Foco visible en todo control del flujo ──
+  {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    const p = await ctx.newPage();
+    await p.goto(URL, { waitUntil: 'networkidle' });
+    if (await p.locator('#edadSi').isVisible().catch(() => false)) await p.click('#edadSi');
+    await p.click('.card:not(.card--out) .add');
+    await p.waitForTimeout(300);
+
+    const sinFoco = [];
+    for (const sel of ['#q', '#distritoSel', '#peek', '#barWa', '.chip']) {
+      if (!(await p.locator(sel).first().count())) continue;
+      await p.locator(sel).first().focus();
+      await p.keyboard.press('Shift+Tab');
+      await p.keyboard.press('Tab');
+      const s = await p.evaluate(() => {
+        const cs = getComputedStyle(document.activeElement);
+        return { ow: parseFloat(cs.outlineWidth), os: cs.outlineStyle, bs: cs.boxShadow };
+      });
+      if (!((s.os !== 'none' && s.ow > 0) || s.bs !== 'none')) sinFoco.push(sel);
+    }
+    ok(sinFoco.length === 0,
+       'foco visible en todos los controles del pedido' +
+       (sinFoco.length ? ` — sin indicador: ${sinFoco.join(', ')}` : ''));
+    await ctx.close();
+  }
+
+  // ── La verificación de edad contiene el foco (Ley N° 28681) ──
+  {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    const p = await ctx.newPage();
+    await p.goto(URL, { waitUntil: 'networkidle' });
+    await p.waitForTimeout(400);
+
+    if (await p.locator('#edad[data-on="true"]').count()) {
+      let escapo = 0;
+      for (let i = 0; i < 10; i++) {
+        await p.keyboard.press('Tab');
+        if (await p.evaluate(() => !document.activeElement?.closest('#edad'))) { escapo = i + 1; break; }
+      }
+      ok(escapo === 0,
+         'el foco no se escapa de la verificación de edad en 10 tabulaciones' +
+         (escapo ? ` — salió en el Tab #${escapo}` : ''));
+    }
+    await ctx.close();
+  }
+
+  // ── El pedido sin distrito lo dice en el mensaje ──
+  {
+    const ctx = await browser.newContext({ viewport: { width: 390, height: 844 },
+                                           hasTouch: true, isMobile: true });
+    const p = await ctx.newPage();
+    await p.goto(URL, { waitUntil: 'networkidle' });
+    if (await p.locator('#edadSi').isVisible().catch(() => false)) await p.click('#edadSi');
+    await p.click('.card:not(.card--out) .add');
+    await p.waitForTimeout(300);
+
+    if (await p.locator('#distritoCaja').count()) {
+      ok(await p.getAttribute('#distritoCaja', 'data-pendiente') === 'true',
+         'sin distrito elegido, el selector se muestra pendiente');
+      ok(await p.isVisible('#distritoSel'),
+         'el selector se ve SIN tener que desplegar la vista previa');
+
+      await p.click('#bubble');           // cerrar la vista previa
+      await p.waitForTimeout(200);
+      ok(await p.isVisible('#distritoSel'),
+         'el selector sigue visible con la vista previa cerrada');
+
+      const href = decodeURIComponent(await p.getAttribute('#barWa', 'href'));
+      ok(/falta sumar el delivery/i.test(href),
+         'el mensaje avisa que al total le falta el delivery');
+    }
+    await ctx.close();
+  }
+}
+
 (async () => {
   const browser = await abrirNavegador();
   try {
     for (const perfil of PERFILES) await probar(browser, perfil);
+    await accesibilidad(browser);
   } finally {
     await browser.close();
   }

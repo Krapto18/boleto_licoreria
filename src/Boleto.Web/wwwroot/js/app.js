@@ -276,6 +276,10 @@
         + `\nDelivery ${envio.n}: ${envio.c > 0 ? money(envio.c) : 'gratis'}`
         + (envio.t ? ` (${envio.t})` : '')
         + `\n*Total: ${money(t2)}*`;
+    } else if (CONFIG.zonas?.length) {
+      /* Sin distrito el total está incompleto. Decirlo en el mensaje evita
+         que la primera respuesta de la tienda sea un cargo sorpresa. */
+      bloque = `\n*Total: ${money(total)}* (falta sumar el delivery)`;
     }
 
     return `Hola *${CONFIG.tienda}* 👋\n\nQuiero hacer este pedido:\n\n${lineas}\n${regalo}`
@@ -408,6 +412,27 @@
 
     /* No se cierra con Escape: la verificación es obligatoria. */
     caja.addEventListener('keydown', (e) => { if (e.key === 'Escape') e.preventDefault(); });
+
+    /* El aria-modal="true" promete que no se puede salir, pero por sí solo
+       no contiene nada: bastaban dos tabulaciones para llegar al catálogo
+       de atrás con la verificación en pantalla. Siendo un requisito de la
+       Ley N° 28681, la promesa tiene que cumplirse de verdad. */
+    document.addEventListener('keydown', (e) => {
+      if (e.key !== 'Tab' || caja.dataset.on !== 'true') return;
+
+      const focos = [...caja.querySelectorAll('button, [href], select, input')]
+        .filter((el) => !el.hidden && el.offsetParent !== null);
+      if (!focos.length) return;
+
+      const primero = focos[0], ultimo = focos[focos.length - 1];
+      const activo = document.activeElement;
+
+      if (e.shiftKey && (activo === primero || !caja.contains(activo))) {
+        e.preventDefault(); ultimo.focus();
+      } else if (!e.shiftKey && (activo === ultimo || !caja.contains(activo))) {
+        e.preventDefault(); primero.focus();
+      }
+    });
   }
 
   /* ══════════════════════════════════════════════════════════
@@ -436,8 +461,21 @@
         else localStorage.removeItem('boleto:distrito');
       } catch (_) {}
       if (v === 'otro') toast('Coordinamos tu zona por WhatsApp');
+      marcarDistrito();
       actualizar();
     });
+
+    marcarDistrito();
+  }
+
+  /* El total no es el total hasta que hay distrito. Se dice, no se
+     bloquea: el botón de WhatsApp nunca deja de funcionar. */
+  function marcarDistrito() {
+    const caja = $('#distritoCaja');
+    if (!caja) return;
+    const sinElegir = !envio && $('#distritoSel')?.value !== 'otro';
+    caja.dataset.pendiente = sinElegir;
+    $('#distritoLbl').textContent = sinElegir ? 'Elige tu distrito' : 'Tu distrito';
   }
 
   /* ══════════════════════════════════════════════════════════

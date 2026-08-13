@@ -39,6 +39,8 @@ Ninguno de los dos se ve con `curl`. Los dos habrían salido al primer
 
 ## Qué cubre
 
+**Flujo de pedido** (escritorio y móvil):
+
 - La vista previa se abre sola al agregar el primer producto
 - Tocar el selector de distrito **no** cierra la vista previa
 - Tocar la burbuja **sí** la cierra (el gesto original sigue vivo)
@@ -47,6 +49,20 @@ Ninguno de los dos se ve con `curl`. Los dos habrían salido al primer
 - Pedido y distrito se recuperan tras recargar
 - El service worker queda registrado
 - Cero errores de JavaScript en consola
+
+**Accesibilidad.** El documento de decisiones afirmaba tres cosas que al
+medirlas resultaron falsas. Ahora se comprueban solas:
+
+- Todo objetivo táctil llega a 44 px, descartando lo invisible o inerte
+  y contando el área del `<label>` contenedor
+- Foco visible en todos los controles del pedido, con Tab real para que
+  `:focus-visible` se active como con un teclado de verdad
+- El foco no se escapa de la verificación de edad en 10 tabulaciones
+  (Ley N° 28681)
+- Sin distrito elegido: el selector se ve sin desplegar nada, se marca
+  como pendiente y el mensaje avisa que falta sumar el delivery
+
+Detalle de cada corrección en `docs/decisiones-ihc.md`, nivel 5.
 
 ## Antes de correrla
 

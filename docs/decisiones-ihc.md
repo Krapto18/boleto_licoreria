@@ -493,3 +493,40 @@ la regla de Von Restorff del punto 3: esa reserva el verde para WhatsApp en la
 **landing**, y el panel no comparte hoja de estilos ni tiene botones de WhatsApp.
 Dentro del panel, verde significa activo, y significa lo mismo en los dos sitios
 donde aparece.
+
+## 31. La regla del verde, ahora verificada y no solo declarada
+
+El punto 3 dice que el verde `--wa` se reserva para lo que abre WhatsApp. Era una
+declaración en un comentario de CSS: nada impedía romperla.
+
+Medido en el navegador, recorriendo cada elemento pintado en los estados por los
+que pasa el cliente —hero, catálogo, con pedido, pie de página— en móvil y
+escritorio:
+
+| Estado | Verde en pantalla | Área |
+|---|---|---|
+| Hero, sin pedido | `#heroWa` | 17 096 px² |
+| Catálogo, sin pedido | `#float` | 3 136 px² |
+| Catálogo, con pedido | `#barWa` | 12 688 px² |
+| Pie, con pedido | `#closeWa` + `#barWa` | 21 219 + 12 688 px² |
+
+**Cero intrusos.** Todo lo verde abre WhatsApp, y en todos los estados hay al
+menos un llamado a la vista. El único caso con dos verdes simultáneos es el
+cierre, donde ambos van al mismo sitio: se refuerzan, no compiten.
+
+El flotante desaparece cuando el hero está a la vista y cuando hay pedido
+(`body[data-cart="on"]`), así que nunca hay dos CTA verdes distintos peleándose.
+Esa lógica **estuvo rota** hasta el nivel 4: el `ReferenceError` de
+`animarEntrada` impedía que corriera el observador, y el flotante se quedaba
+encima del botón del hero de forma permanente.
+
+Contraste del texto sobre el botón: **8.38:1**, muy por encima del 4.5 de AA.
+
+Ahora hay una prueba que recorre esos estados y falla si aparece verde en algo
+que no lleve a `wa.me`. Se comprobó pintando el botón "Agregar" de verde: la
+prueba lo detectó en los tres botones visibles.
+
+**Sobre el barrido de brillo del punto 18:** es blanco, dura 0,6 s, solo existe
+con puntero fino y solo en la tarjeta apuntada. No compite con el verde, que es
+un color saturado, permanente y siempre presente en pantalla. Un destello
+momentáneo en un elemento no altera la jerarquía de color del punto 3.

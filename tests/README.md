@@ -61,6 +61,15 @@ medirlas resultaron falsas. Ahora se comprueban solas:
   (Ley N° 28681)
 - Sin distrito elegido: el selector se ve sin desplegar nada, se marca
   como pendiente y el mensaje avisa que falta sumar el delivery
+- `--bar-h` reserva la altura real de la barra y el pie de página no
+  queda debajo de ella
+
+**Regla de color.** El verde `--wa` se reserva para lo que abre WhatsApp:
+es la única conversión que importa, y Von Restorff solo funciona si ese
+color no aparece en ningún otro lado. La prueba recorre los estados por
+los que pasa el cliente y falla si aparece verde en algo que no lleve a
+`wa.me`, si algún estado se queda sin llamado a la vista, o si el texto
+del botón baja de 4.5:1 de contraste.
 
 Detalle de cada corrección en `docs/decisiones-ihc.md`, nivel 5.
 

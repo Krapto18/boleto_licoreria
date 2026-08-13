@@ -251,6 +251,98 @@ async function accesibilidad(browser) {
     await ctx.close();
   }
 
+  /* ── La regla de color del proyecto ──────────────────────────
+     El verde --wa se reserva para lo que abre WhatsApp. Es la única
+     conversión que importa, y el efecto Von Restorff solo funciona si
+     ese color no aparece en ningún otro lado: si estuviera en cinco
+     sitios distintos dejaría de significar "escríbenos".
+
+     Se mira el fondo pintado, que es lo que domina la vista, en los
+     estados por los que pasa el cliente. */
+  {
+    const ctx = await browser.newContext({ viewport: { width: 390, height: 844 },
+                                           hasTouch: true, isMobile: true });
+    const p = await ctx.newPage();
+    await p.goto(URL, { waitUntil: 'networkidle' });
+    if (await p.locator('#edadSi').isVisible().catch(() => false)) await p.click('#edadSi');
+    await p.waitForTimeout(300);
+
+    const inventario = () => {
+      const hsl = (c) => {
+        const m = (c || '').match(/[\d.]+/g);
+        if (!m || m.length < 3) return null;
+        if (m.length >= 4 && Number(m[3]) === 0) return null;
+        const [r, g, b] = m.slice(0, 3).map(Number).map((v) => v / 255);
+        const mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn;
+        let h = 0;
+        if (d) { h = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4;
+                 h *= 60; if (h < 0) h += 360; }
+        return { h, s: mx ? d / mx : 0, l: (mx + mn) / 2 };
+      };
+      const esVerde = (c) => {
+        const v = hsl(c);                       // --wa: h=142 s=.82 l=.49
+        return !!v && v.h > 110 && v.h < 175 && v.s > 0.45 && v.l > 0.30;
+      };
+      const out = { verdes: [], intrusos: [] };
+      document.querySelectorAll('body *').forEach((el) => {
+        const cs = getComputedStyle(el);
+        if (cs.visibility === 'hidden' || cs.display === 'none') return;
+        if (parseFloat(cs.opacity) === 0 || cs.pointerEvents === 'none') return;
+        const r = el.getBoundingClientRect();
+        if (!r.width || !r.height || r.bottom < 0 || r.top > window.innerHeight) return;
+        if (!esVerde(cs.backgroundColor)) return;
+
+        const a = el.closest('a');
+        const wa = !!(a && /wa\.me|whatsapp/i.test(a.getAttribute('href') || ''));
+        const id = el.tagName.toLowerCase() + (el.id ? '#' + el.id : '');
+        (wa ? out.verdes : out.intrusos).push(`${id} ${Math.round(r.width * r.height)}px²`);
+      });
+      return out;
+    };
+
+    const estados = [
+      ['hero', async () => {}],
+      ['catálogo', async () => { await p.evaluate(() => {
+          document.documentElement.style.scrollBehavior = 'auto';
+          document.querySelector('#catalogo').scrollIntoView(); }); await p.waitForTimeout(500); }],
+      ['con pedido', async () => { await p.click('.card:not(.card--out) .add');
+          await p.waitForTimeout(700); }],
+      ['pie de página', async () => { await p.evaluate(() =>
+          window.scrollTo(0, document.documentElement.scrollHeight)); await p.waitForTimeout(500); }]
+    ];
+
+    const intrusos = [];
+    let sinVerde = [];
+    for (const [nombre, preparar] of estados) {
+      await preparar();
+      const r = await p.evaluate(inventario);
+      r.intrusos.forEach((x) => intrusos.push(`${nombre}: ${x}`));
+      if (!r.verdes.length) sinVerde.push(nombre);
+    }
+
+    ok(intrusos.length === 0,
+       'el verde de marca solo aparece en lo que abre WhatsApp' +
+       (intrusos.length ? ` — intrusos: ${intrusos.join(' | ')}` : ''));
+    ok(sinVerde.length === 0,
+       'siempre hay un llamado a WhatsApp a la vista' +
+       (sinVerde.length ? ` — sin verde en: ${sinVerde.join(', ')}` : ''));
+
+    // El CTA principal tiene que ser legible además de visible
+    const contraste = await p.evaluate(() => {
+      const lum = (c) => { const [r, g, b] = c.match(/[\d.]+/g).slice(0, 3).map(Number)
+        .map((v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); });
+        return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
+      const el = document.querySelector('#barWa') || document.querySelector('.btn--wa');
+      const cs = getComputedStyle(el);
+      const l1 = lum(cs.color), l2 = lum(cs.backgroundColor);
+      return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
+    });
+    ok(contraste >= 4.5,
+       `el texto del botón de WhatsApp contrasta ${contraste.toFixed(2)}:1 (AA pide 4.5)`);
+
+    await ctx.close();
+  }
+
   // ── El pedido sin distrito lo dice en el mensaje ──
   {
     const ctx = await browser.newContext({ viewport: { width: 390, height: 844 },

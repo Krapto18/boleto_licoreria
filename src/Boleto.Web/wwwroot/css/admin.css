@@ -1298,3 +1298,118 @@ a {
     border-color: rgba(154,166,204,.35);
     color: var(--tx-tenue);
 }
+
+/* ══════════════════════════════════════════════════════════════
+   DELIVERY · costo por distrito
+
+   43 filas es una lista larga para un celular. La densidad manda:
+   fila compacta, sin tarjetas ni sombras, y el buscador arriba para
+   que el dueño llegue a "Surco" sin recorrer los 43.
+   ══════════════════════════════════════════════════════════════ */
+.zonas-tools {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 14px;
+}
+
+.zonas-masivo {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--marino-2);
+    border: 1px solid var(--marino-3);
+    border-radius: 12px;
+    padding: 8px 10px;
+}
+
+    .zonas-masivo > span {
+        font-size: .6rem;
+        font-weight: 600;
+        letter-spacing: .12em;
+        text-transform: uppercase;
+        color: var(--tx-tenue);
+    }
+
+    .zonas-masivo input {
+        width: 92px;
+        min-height: 44px;
+        border-radius: 9px;
+        border: 1px solid var(--marino-3);
+        background: var(--marino);
+        color: var(--tx-claro);
+        font: 600 1rem/1 var(--sans);
+        padding: 0 10px;
+    }
+
+.zonas-adm {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 18px;
+}
+
+.zona-adm {
+    display: grid;
+    grid-template-columns: 1fr 104px 128px;
+    gap: 12px;
+    align-items: center;
+    background: var(--marino-2);
+    border: 1px solid var(--marino-3);
+    border-radius: 12px;
+    padding: 10px 12px;
+}
+
+    /* Desmarcado = no se reparte ahí. Se atenúa en vez de desaparecer:
+       el dueño ve que existe y puede volver a activarlo. */
+    .zona-adm[data-off="true"] {
+        opacity: .45;
+    }
+
+.zona-adm__on {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    min-height: 44px;
+}
+
+    .zona-adm__on input {
+        width: 22px;
+        height: 22px;
+        accent-color: var(--verde);
+        flex-shrink: 0;
+        cursor: pointer;
+    }
+
+    .zona-adm__on b {
+        font-size: .92rem;
+        font-weight: 500;
+    }
+
+@media(max-width:640px) {
+    .zona-adm {
+        grid-template-columns: 1fr 92px;
+        grid-template-areas: 'nombre costo' 'tiempo tiempo';
+        row-gap: 8px;
+    }
+
+        .zona-adm .zona-adm__on {
+            grid-area: nombre
+        }
+
+        .zona-adm .campo:nth-of-type(1) {
+            grid-area: costo
+        }
+
+        .zona-adm .campo:nth-of-type(2) {
+            grid-area: tiempo;
+            width: 100%
+        }
+
+    .zonas-tools {
+        flex-direction: column;
+        align-items: stretch
+    }
+}

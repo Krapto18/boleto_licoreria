@@ -643,12 +643,67 @@ a {
     overflow: hidden;
     display: flex;
     flex-direction: column;
+    /* Para que al crecer se dibuje encima de las vecinas y no quede
+       recortada por las tarjetas que vienen después en el flujo. */
+    position: relative;
     transition: transform .2s,box-shadow .2s
 }
 
-    .card:hover {
-        transform: translateY(-4px);
-        box-shadow: 0 18px 40px rgba(0,0,0,.32)
+    /* La tarjeta crece al apuntarla, detrás de una consulta de capacidad.
+       En táctil no hay hover: el estado se queda pegado tras el tap y la
+       tarjeta quedaría agrandada hasta que toques otra.
+
+       El 1.03 no es timidez. La tarjeta contiene el botón "Agregar", y al
+       escalar el botón se desplaza: si crece demasiado, el objetivo huye
+       del cursor mientras lo apuntas (Fitts) y el borde puede salirse de
+       debajo del puntero, encendiendo y apagando el hover en bucle. A
+       1.03 el desplazamiento es de unos 3 px: se percibe, no estorba. */
+    @media (hover:hover) and (pointer:fine) {
+        .card:hover {
+            transform: translateY(-4px) scale(1.03);
+            box-shadow: 0 18px 40px rgba(0,0,0,.32);
+            z-index: 2
+        }
+
+        /* Barrido de brillo. Da la sensación premium del vidrio sin ninguno
+           de sus costos: no hay backdrop-filter ni transparencia bajo el
+           texto, así que el contraste de la tarjeta sigue siendo el mismo
+           14:1 de siempre. Es un gradiente que se mueve — la GPU ya sabe
+           componer transform y opacity baratos.
+
+           pointer-events:none es obligatorio: sin eso la capa se traga los
+           clics del botón "Agregar" y la tarjeta deja de funcionar. */
+        .card::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            z-index: 1;
+            pointer-events: none;
+            background: linear-gradient(105deg,transparent 42%,rgba(255,255,255,.55) 50%,transparent 58%);
+            transform: translateX(-120%);
+            opacity: 0;
+            transition: transform .6s ease,opacity .2s
+        }
+
+        .card:hover::after {
+            transform: translateX(120%);
+            opacity: 1
+        }
+    }
+
+    /* El bloque global solo acorta la transición: el salto de escala
+       seguiría ocurriendo, de golpe. Para sensibilidad vestibular lo que
+       molesta es el cambio de tamaño, así que acá se anula entero y se
+       deja la sombra como única señal de foco. */
+    @media (prefers-reduced-motion:reduce) {
+        .card:hover {
+            transform: none;
+            box-shadow: 0 18px 40px rgba(0,0,0,.32)
+        }
+
+        .card::after, .card:hover::after {
+            display: none
+        }
     }
 
     .card[data-in="true"] {

@@ -6,3 +6,11 @@ obj/
 appsettings.*.local.json
 publish/
 *.zip
+
+# Fotos subidas por el panel en modo disco (solo desarrollo).
+# En producción van a Blob Storage.
+src/Boleto.Web/media/
+
+# Dependencias de la prueba de navegador (tests/)
+node_modules/
+package-lock.json

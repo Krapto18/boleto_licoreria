@@ -20,14 +20,24 @@ public static class SeedData
     {
         await db.Database.MigrateAsync(ct);
 
-        if (!await db.Tienda.AnyAsync(ct))
+        var tienda = await db.Tienda.FirstOrDefaultAsync(ct);
+        if (tienda is null)
         {
-            /* Zonas, pagos y tiempo de entrega nacen vacíos a propósito:
-               mientras el cliente no los confirme, esas secciones no
-               aparecen en la web. Se llenan desde el panel. */
-            db.Tienda.Add(new Tienda { Id = 1 });
-            await db.SaveChangesAsync(ct);
+            /* Pagos y tiempo de entrega nacen vacíos a propósito: mientras
+               el cliente no los confirme, esas secciones no aparecen en la
+               web. Se llenan desde el panel. */
+            tienda = new Tienda { Id = 1 };
+            db.Tienda.Add(tienda);
         }
+
+        /* Las zonas sí se siembran: el reparto a Lima Metropolitana está
+           confirmado. Solo si están vacías — si el dueño ya editó costos
+           desde el panel, no se le pisan. Los S/ 10 son el punto de
+           partida acordado; el panel es el que manda de ahí en adelante. */
+        if (string.IsNullOrWhiteSpace(tienda.Zonas))
+            tienda.Zonas = string.Join('\n', DistritosLima.Select(d => $"{d}|10|"));
+
+        await db.SaveChangesAsync(ct);
 
         var existentes = await db.Productos.Select(p => p.Id).ToListAsync(ct);
         var faltantes = Catalogo.Where(p => !existentes.Contains(p.Id)).ToList();
@@ -50,6 +60,25 @@ public static class SeedData
                     string.Join("; ", r.Errors.Select(e => e.Description)));
         }
     }
+
+    /// <summary>
+    /// Los 43 distritos de la provincia de Lima. No incluye el Callao:
+    /// es Provincia Constitucional, no Lima Metropolitana. Si el dueño
+    /// reparte allá, se agregan sus distritos desde el panel.
+    /// </summary>
+    public static readonly string[] DistritosLima =
+    [
+        "Ancón", "Ate", "Barranco", "Breña", "Carabayllo", "Chaclacayo",
+        "Chorrillos", "Cieneguilla", "Comas", "El Agustino", "Independencia",
+        "Jesús María", "La Molina", "La Victoria", "Lima (Cercado)", "Lince",
+        "Los Olivos", "Lurigancho (Chosica)", "Lurín", "Magdalena del Mar",
+        "Miraflores", "Pachacámac", "Pucusana", "Pueblo Libre", "Puente Piedra",
+        "Punta Hermosa", "Punta Negra", "Rímac", "San Bartolo", "San Borja",
+        "San Isidro", "San Juan de Lurigancho", "San Juan de Miraflores",
+        "San Luis", "San Martín de Porres", "San Miguel", "Santa Anita",
+        "Santa María del Mar", "Santa Rosa", "Santiago de Surco", "Surquillo",
+        "Villa El Salvador", "Villa María del Triunfo"
+    ];
 
     /// <summary>Catálogo del cliente. 55 productos, precios del PDF original.</summary>
     private static readonly Producto[] Catalogo =

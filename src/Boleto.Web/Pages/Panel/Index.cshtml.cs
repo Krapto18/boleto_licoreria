@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Boleto.Data;
 using Boleto.Data.Entities;
 using Boleto.Web.Models;
 using Boleto.Web.Services;
@@ -29,8 +30,17 @@ public class IndexModel(CatalogoService svc, IAlmacen almacen, ILogger<IndexMode
     /// <summary>Incluye los dados de baja: el panel los muestra en gris.</summary>
     public string TodosJs { get; private set; } = "";
 
+    /// <summary>
+    /// Catálogo maestro de distritos, para poder reponer uno que se quitó
+    /// sin tener que recordar cómo se escribe.
+    /// </summary>
+    public string DistritosJs { get; private set; } = "";
+
     public async Task OnGetAsync(CancellationToken ct)
     {
+        DistritosJs = "const DISTRITOS_LIMA="
+            + JsonSerializer.Serialize(SeedData.DistritosLima, Json) + ";";
+
         var todos = await svc.TodosAsync(ct);
         TodosJs = "const TODOS=" + JsonSerializer.Serialize(todos.Select(p => new
         {
@@ -163,6 +173,23 @@ public class IndexModel(CatalogoService svc, IAlmacen almacen, ILogger<IndexMode
         {
             log.LogError(ex, "Error al subir banner");
             return StatusCode(500, new { error = "No se pudo subir el banner." });
+        }
+    }
+
+    /// <summary>Guarda las zonas de reparto con su costo de delivery.</summary>
+    public async Task<IActionResult> OnPostZonasAsync(
+        [FromBody] ZonaDto[] zonas, CancellationToken ct)
+    {
+        try
+        {
+            await svc.GuardarZonasAsync(zonas ?? [], ct);
+            return new JsonResult(new { ok = true });
+        }
+        catch (InvalidOperationException ex) { return BadRequest(new { error = ex.Message }); }
+        catch (Exception ex)
+        {
+            log.LogError(ex, "Error al guardar zonas");
+            return StatusCode(500, new { error = "No se pudieron guardar las zonas." });
         }
     }
 

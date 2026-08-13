@@ -1,3 +1,4 @@
+using System.Globalization;
 using Boleto.Data;
 using Boleto.Data.Entities;
 using Boleto.Web.Models;
@@ -95,7 +96,14 @@ public class CatalogoService(
         return dto;
     }
 
-    /// <summary>Formato por línea: Distrito|Costo|Tiempo</summary>
+    /// <summary>
+    /// Formato por línea: Distrito|Costo|Tiempo
+    ///
+    /// El costo se lee con cultura invariante, igual que se escribe. Sin
+    /// fijarla, el separador decimal depende de la cultura del hilo: un
+    /// "10,5" guardado en es-PE se releería como 105 en un servidor
+    /// invariante, y el cliente vería ese número en su total.
+    /// </summary>
     private static ZonaDto[] ParsearZonas(string texto) =>
         texto.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
              .Select(l => l.Split('|'))
@@ -103,7 +111,8 @@ public class CatalogoService(
              .Select(p => new ZonaDto
              {
                  Nombre = p[0].Trim(),
-                 Costo = p.Length > 1 && decimal.TryParse(p[1].Trim(), out var c) ? c : 0,
+                 Costo = p.Length > 1 && decimal.TryParse(
+                     p[1].Trim(), NumberStyles.Number, CultureInfo.InvariantCulture, out var c) ? c : 0,
                  Tiempo = p.Length > 2 ? p[2].Trim() : ""
              })
              .ToArray();
@@ -284,6 +293,57 @@ public class CatalogoService(
         await db.SaveChangesAsync(ct);
         Invalidar();
         return anterior;   // para borrar el blob viejo
+    }
+
+    /// <summary>
+    /// Reemplaza las zonas de reparto. Se revalida acá porque el costo del
+    /// delivery entra en el total que ve el cliente: un valor basura se
+    /// convierte en un precio equivocado en el mensaje de WhatsApp.
+    /// </summary>
+    public async Task GuardarZonasAsync(IEnumerable<ZonaDto> zonas, CancellationToken ct = default)
+    {
+        var lista = zonas.Where(z => !string.IsNullOrWhiteSpace(z.Nombre)).ToList();
+
+        foreach (var z in lista)
+        {
+            if (z.Costo < 0)
+                throw new InvalidOperationException(
+                    $"El costo de {z.Nombre} no puede ser negativo. Usa 0 para reparto gratis.");
+
+            if (z.Costo > 500)
+                throw new InvalidOperationException(
+                    $"El costo de {z.Nombre} se ve equivocado: S/ {z.Costo:0.00}.");
+        }
+
+        var duplicado = lista.GroupBy(z => z.Nombre.Trim(), StringComparer.OrdinalIgnoreCase)
+                             .FirstOrDefault(g => g.Count() > 1);
+        if (duplicado is not null)
+            throw new InvalidOperationException($"El distrito \"{duplicado.Key}\" está repetido.");
+
+        /* El separador es '|' y el salto de línea define la fila: si el
+           dueño los escribe dentro de un tiempo, romperían el formato al
+           releerlo. Se neutralizan en vez de rechazar el guardado. */
+        static string Limpio(string? s) =>
+            (s ?? "").Replace('|', ' ').Replace('\n', ' ').Replace('\r', ' ').Trim();
+
+        // Invariante al escribir, invariante al leer. Ver ParsearZonas.
+        var texto = string.Join('\n', lista.Select(z =>
+            string.Create(CultureInfo.InvariantCulture,
+                $"{Limpio(z.Nombre)}|{z.Costo:0.##}|{Limpio(z.Tiempo)}")));
+
+        if (texto.Length > 4000)
+            throw new InvalidOperationException(
+                "La lista de zonas es demasiado larga. Acorta los tiempos de entrega " +
+                "o quita distritos a los que no repartas.");
+
+        await using var db = await factory.CreateDbContextAsync(ct);
+        var t = await db.Tienda.FirstOrDefaultAsync(ct)
+                ?? throw new InvalidOperationException("No hay configuración de tienda.");
+
+        t.Zonas = texto;
+        await db.SaveChangesAsync(ct);
+        Invalidar();
+        log.LogInformation("Zonas de reparto actualizadas: {N} distritos", lista.Count);
     }
 
     /// <summary>Reemplaza la lista de banners. Máximo 5.</summary>

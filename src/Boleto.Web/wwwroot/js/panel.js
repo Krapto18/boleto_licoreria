@@ -332,7 +332,143 @@
         document.querySelectorAll('.panel').forEach((p) =>
             p.hidden = p.id !== 'panel-' + b.dataset.tab);
         if (b.dataset.tab === 'productos') pintarFotos();
+        if (b.dataset.tab === 'delivery') pintarZonas();
         if (b.dataset.tab === 'banners') pintarBanners();
+    });
+
+    /* ══════════════════════════════════════════════════════════
+       Delivery · costo por distrito
+
+       El costo entra en el total que ve el cliente antes de enviar el
+       pedido, así que un número mal puesto acá es un precio equivocado
+       en WhatsApp. Se valida en el campo y otra vez en el servidor.
+       ══════════════════════════════════════════════════════════ */
+    let zonas = (CONFIG.zonas || []).map((z) => ({ ...z }));
+    let buscaZona = '';
+
+    /* Un distrito desmarcado no se borra de la lista en memoria: se marca.
+       Así se puede volver a activar sin perder el costo que tenía. */
+    zonas.forEach((z) => { z.on = true; });
+
+    function zonasVisibles() {
+        return zonas.filter((z) => !buscaZona || z.n.toLowerCase().includes(buscaZona));
+    }
+
+    function pintarZonas() {
+        if (!$('#zonasAdm')) return;
+
+        const lista = zonasVisibles();
+        const activos = zonas.filter((z) => z.on).length;
+        $('#zCount').textContent =
+            `${activos} distrito${activos === 1 ? '' : 's'} con reparto`
+            + (lista.length !== zonas.length ? ` · ${lista.length} en la búsqueda` : '');
+
+        $('#zonasAdm').innerHTML = lista.map((z) => {
+            const i = zonas.indexOf(z);
+            return `
+      <div class="zona-adm" data-i="${i}" data-off="${!z.on}">
+        <label class="zona-adm__on">
+          <input type="checkbox" data-zon="${i}" ${z.on ? 'checked' : ''}
+                 aria-label="Repartir a ${esc(z.n)}">
+          <b>${esc(z.n)}</b>
+        </label>
+        <div class="campo">
+          <label for="zc-${i}">Costo</label>
+          <input type="number" id="zc-${i}" data-zcosto="${i}" value="${(z.c ?? 0).toFixed(2)}"
+                 step="0.50" min="0" inputmode="decimal" ${z.on ? '' : 'disabled'}>
+        </div>
+        <div class="campo">
+          <label for="zt-${i}">Tiempo</label>
+          <input id="zt-${i}" data-ztiempo="${i}" value="${esc(z.t || '')}"
+                 placeholder="30-45 min" maxlength="30" ${z.on ? '' : 'disabled'}>
+        </div>
+      </div>`;
+        }).join('');
+    }
+
+    $('#qZonas')?.addEventListener('input', (e) => {
+        buscaZona = e.target.value.trim().toLowerCase();
+        pintarZonas();
+    });
+
+    $('#zonasAdm')?.addEventListener('input', (e) => {
+        const el = e.target;
+
+        const ic = el.dataset.zcosto;
+        if (ic !== undefined) {
+            const v = parseFloat(el.value);
+            /* Nielsen #9 · el error se marca en el campo exacto */
+            if (el.value === '' || isNaN(v) || v < 0) { el.classList.add('mal'); return; }
+            el.classList.remove('mal');
+            zonas[+ic].c = v;
+            return;
+        }
+
+        const it = el.dataset.ztiempo;
+        if (it !== undefined) zonas[+it].t = el.value;
+    });
+
+    $('#zonasAdm')?.addEventListener('change', (e) => {
+        const i = e.target.dataset.zon;
+        if (i === undefined) return;
+        zonas[+i].on = e.target.checked;
+        pintarZonas();
+    });
+
+    /* Cuando sube la gasolina, el costo sube parejo en los 43. Sin esto
+       son 43 campos a mano y el dueño termina no actualizando ninguno. */
+    $('#zAplicar')?.addEventListener('click', () => {
+        const v = parseFloat($('#zCostoTodos').value);
+        if (isNaN(v) || v < 0) {
+            $('#zCostoTodos').classList.add('mal');
+            toast('Escribe un costo válido para aplicar', false);
+            return;
+        }
+        $('#zCostoTodos').classList.remove('mal');
+
+        /* Respeta la búsqueda, igual que el ajuste masivo de precios. */
+        const lista = zonasVisibles().filter((z) => z.on);
+        lista.forEach((z) => { z.c = v; });
+        pintarZonas();
+        toast(`S/ ${v.toFixed(2)} aplicado a ${lista.length} distrito${lista.length === 1 ? '' : 's'}`, false);
+    });
+
+    $('#zReponer')?.addEventListener('click', () => {
+        let nuevos = 0;
+        DISTRITOS_LIMA.forEach((n) => {
+            const y = zonas.find((z) => z.n.toLowerCase() === n.toLowerCase());
+            if (y) { y.on = true; return; }
+            zonas.push({ n, c: 10, t: '', on: true });
+            nuevos++;
+        });
+        pintarZonas();
+        toast(nuevos ? `${nuevos} distrito${nuevos === 1 ? '' : 's'} agregado${nuevos === 1 ? '' : 's'}`
+                     : 'Ya estaban los 43, se reactivaron los desmarcados', false);
+    });
+
+    $('#guardarZonas')?.addEventListener('click', async () => {
+        if ($('#zonasAdm').querySelector('.mal')) {
+            toast('Revisa los costos marcados en rojo', false);
+            return;
+        }
+
+        const btn = $('#guardarZonas');
+        const txt = btn.textContent;
+        btn.disabled = true; btn.textContent = 'Guardando…';
+
+        try {
+            const r = await fetch('/panel?handler=Zonas', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': token() },
+                body: JSON.stringify(zonas.filter((z) => z.on).map((z) => ({ n: z.n, c: z.c, t: z.t })))
+            });
+            const d = await r.json().catch(() => ({}));
+            toast(r.ok ? 'Zonas publicadas: ya están en la web' : (d.error || 'No se pudo guardar.'), false);
+        } catch (_) {
+            toast('Sin conexión. Intenta de nuevo.', false);
+        } finally {
+            btn.disabled = false; btn.textContent = txt;
+        }
     });
 
     /* ══════════════════════════════════════════════════════════

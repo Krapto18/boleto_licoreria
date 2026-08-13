@@ -14,7 +14,8 @@ con mala señal a las 3 a.m.
 Razor Pages sirve el mismo HTML/CSS/JS de siempre. Solo cambian dos cosas:
 
 - `data.js` desapareció: el servidor inyecta `CONFIG`, `GRUPOS` y `PRODUCTOS`
-  desde la base con las mismas claves. **`app.js` no cambió ni una línea.**
+  desde la base con las mismas claves, así que `app.js` siguió funcionando sin
+  tocarlo.
 - El botón "Descargar archivo" del panel ahora hace `POST` y publica de verdad.
 
 ## Estructura
@@ -30,8 +31,22 @@ Boleto.sln
     ├── Services/             CatalogoService con caché en memoria, IAlmacen
     └── wwwroot/              css, js (app.js, panel.js), assets, sw.js, manifest
 infra/crear-azure.sh          provisiona todo con az CLI
+tests/                        flujo de pedido en un navegador real
 .github/workflows/            despliegue automático
 ```
+
+## Probar el flujo de pedido
+
+```bash
+cd tests
+npm install
+npm test        # con la app corriendo
+```
+
+Corre el pedido completo en un navegador real —escritorio y móvil con
+touch— hasta el mensaje de WhatsApp. Existe porque dos defectos reales
+pasaron una verificación hecha solo con peticiones al servidor: ninguno
+de los dos era visible sin un navegador. Detalle en `tests/README.md`.
 
 ## Correr en local
 
@@ -151,6 +166,31 @@ Always On cada pocos minutos; `/health/db` sí comprueba la conexión a SQL y se
 consulta a mano. Con el chequeo de base en `/health`, el ping de mantenerse
 despierto gastaba DTU las 24 horas para nada.
 
+## Delivery por distrito
+
+El seed carga los **43 distritos de la provincia de Lima a S/ 10**. No incluye el
+Callao: es Provincia Constitucional, no Lima Metropolitana. Si el dueño reparte
+allá, los agrega desde el panel.
+
+Solo se siembran si la tabla está vacía. Si el dueño ya editó costos, el arranque
+no se los pisa.
+
+El cliente elige su distrito en la vista previa del pedido, antes de enviarlo. El
+costo se suma al total y viaja desglosado en el mensaje de WhatsApp —subtotal,
+delivery y total— para que no se entere del cargo recién cuando la tienda le
+responde.
+
+En el panel, la pestaña **Delivery** edita costo y tiempo por distrito, con
+"aplicar a todos" sobre el filtro activo (cuando sube la gasolina son 43 campos a
+mano) y un botón para reponer los distritos que se hayan quitado. Desmarcar un
+distrito lo saca de la lista que ve el cliente sin perder su costo.
+
+El costo se persiste como texto dentro de `Tienda.Zonas` con formato
+`Distrito|Costo|Tiempo`, y se escribe y se lee **con cultura invariante**. Sin
+fijarla, el separador decimal depende de la cultura del hilo: un `10,5` guardado
+en `es-PE` se releería como `105` en un servidor invariante, y ese número
+aparecería en el total del cliente.
+
 ## Seguridad del panel
 
 - Login con ASP.NET Core Identity, bloqueo tras 5 intentos.
@@ -177,4 +217,8 @@ Capa extra opcional: Access Restrictions por IP sobre `/panel`.
    en `wwwroot/assets/productos` son de desarrollo; en Azure van al Blob.
 4. GA4 y Meta Pixel: se guardan en la tabla `Tienda` y se cargan solo si tienen
    valor.
-5. Migrar `Tienda` a una pantalla del panel (hoy se edita por SQL).
+5. Confirmar con el dueño el costo real por distrito. Los S/ 10 uniformes son el
+   punto de partida, no un precio acordado zona por zona.
+6. Llevar el resto de `Tienda` al panel — teléfono, redes, promos, métodos de
+   pago. Las zonas de reparto ya tienen su pantalla; lo demás sigue editándose
+   por SQL.

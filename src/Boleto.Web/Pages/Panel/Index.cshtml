@@ -47,6 +47,7 @@
         <div class="tabs" role="tablist">
             <button class="tab" role="tab" data-tab="precios" aria-selected="true">Precios y stock</button>
             <button class="tab" role="tab" data-tab="productos" aria-selected="false">Productos y fotos</button>
+            <button class="tab" role="tab" data-tab="delivery" aria-selected="false">Delivery</button>
             <button class="tab" role="tab" data-tab="banners" aria-selected="false">Banners</button>
         </div>
 
@@ -136,6 +137,38 @@
             </div>
         </div>
 
+        <!-- ══════════ DELIVERY ══════════ -->
+        <section id="panel-delivery" class="panel" hidden>
+            <p class="ayuda__p">
+                El costo del distrito se suma al total del pedido y aparece desglosado
+                en el mensaje de WhatsApp, antes de que el cliente lo envíe.
+                Deja el costo en <b>0</b> para reparto gratis. Si desmarcas un distrito,
+                deja de aparecer en la lista que ve el cliente.
+            </p>
+
+            <div class="zonas-tools">
+                <label class="zonas-masivo">
+                    <span>Aplicar a todos</span>
+                    <input type="number" id="zCostoTodos" step="0.50" min="0"
+                           inputmode="decimal" placeholder="10.00">
+                    <button class="mini" id="zAplicar">Aplicar</button>
+                </label>
+
+                <label class="search">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></svg>
+                    <input type="search" id="qZonas" placeholder="Buscar distrito…" aria-label="Buscar distrito">
+                </label>
+
+                <button class="mini" id="zReponer">Reponer los 43 distritos</button>
+            </div>
+
+            <p class="count" id="zCount" role="status"></p>
+
+            <div class="zonas-adm" id="zonasAdm"></div>
+
+            <button class="btn btn--pub" id="guardarZonas">Guardar zonas</button>
+        </section>
+
         <!-- ══════════ BANNERS ══════════ -->
         <section id="panel-banners" class="panel" hidden>
             <p class="ayuda__p">
@@ -183,7 +216,7 @@
         <button id="undo">Deshacer</button>
     </div>
 
-    <script>@Html.Raw(Model.CatalogoJs)@Html.Raw(Model.TodosJs)</script>
+    <script>@Html.Raw(Model.CatalogoJs)@Html.Raw(Model.TodosJs)@Html.Raw(Model.DistritosJs)</script>
     <script src="~/js/panel.js" asp-append-version="true"></script>
     @Html.AntiForgeryToken()
 </body>

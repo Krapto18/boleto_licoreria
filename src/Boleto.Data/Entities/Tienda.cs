@@ -26,8 +26,12 @@ public class Tienda
     /* ── ZONAS DE REPARTO ────────────────────────────────────────
        Una por línea, con el formato:  Distrito|Costo|Tiempo
        Ejemplo:  Santiago de Surco|0|30-45 min
-       Costo 0 = gratis. Vacío = la sección no aparece en la web. */
-    [MaxLength(2000)] public string Zonas { get; set; } = "";
+       Costo 0 = gratis. Vacío = la sección no aparece en la web.
+
+       4000 y no 2000: son los 43 distritos de Lima Metropolitana y el
+       dueño puede escribir un tiempo por cada uno. Con 2000 el límite
+       quedaba a un par de distritos de distancia. */
+    [MaxLength(4000)] public string Zonas { get; set; } = "";
 
     /* ── MÉTODOS DE PAGO ─────────────────────────────────────────
        Uno por línea. Vacío = la sección no aparece. */

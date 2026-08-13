@@ -260,3 +260,96 @@ herramienta.
 
 El siguiente escalón real es un backend (Supabase o una función en Azure) para
 que el panel publique directo. Es otro proyecto y otro presupuesto.
+
+---
+---
+
+# Nivel 4 — decisiones añadidas
+
+## 18. Por qué NO hay efecto vidrio (liquid glass) en las tarjetas
+
+Se evaluó y se descartó. El motivo no es estético: rompe tres cosas medibles.
+
+**Contraste.** La tarjeta es `--crema` sólido con texto `--tx-oscuro`: el 14:1
+documentado en el punto 10. El vidrio sustituye ese fondo por translucidez, así
+que el contraste del nombre y del precio pasa a depender de lo que quede detrás
+—y **cambia con el scroll**. Un 14:1 fijo se convierte en una variable. Es WCAG
+1.4.3 incumplido de forma intermitente, que es la peor manera de incumplirlo:
+no se detecta en una captura de pantalla.
+
+**Rendimiento.** `backdrop-filter` obliga al compositor a re-samplear el fondo en
+cada frame. Con el filtro en "Todo" son 55 tarjetas a la vez. El público de una
+licorería de barrio a las 3 a.m. no está en un tope de gama.
+
+> El proyecto ya usa `backdrop-filter` en el nav, la barra de pedido y la
+> pantalla de edad. Son elementos **únicos**. Uno es gratis; 55 repetidos en un
+> grid, no. Por eso no sirven como precedente.
+
+**Von Restorff.** Meter atractivo visual en 55 elementos que compiten con el
+único CTA que importa va en contra de toda la sección 3.
+
+**Y Nielsen #2:** la tarjeta imita el cartel impreso del cliente. El vidrio
+esmerilado es lenguaje de sistema operativo, no de cartelería de licorería.
+
+**Lo que sí se puso:** un barrido de brillo en hover. Un gradiente que cruza la
+tarjeta — `transform` y `opacity`, que la GPU compone barato — sin translucidez
+bajo el texto. La misma sensación premium, cero costo de contraste.
+
+## 19. La tarjeta crece al apuntarla — y por qué solo un 3%
+
+`scale(1.03)`, no más. La tarjeta **contiene el botón "Agregar"**: al escalar, el
+botón se desplaza. Si crece demasiado, el objetivo se aleja del cursor mientras
+se apunta (Fitts al revés) y el borde puede salirse de debajo del puntero,
+encendiendo y apagando el hover en bucle. A 1.03 el desplazamiento es de unos
+3 px: se percibe, no estorba.
+
+Va detrás de `@media (hover:hover) and (pointer:fine)`. En táctil el `:hover` se
+queda pegado tras el tap: la tarjeta quedaría agrandada hasta tocar otra. El
+`:hover` anterior no tenía esa protección — con el escalado el defecto habría
+pasado de invisible a evidente.
+
+`prefers-reduced-motion` tiene bloque propio. El global solo acorta la
+transición, así que el salto de tamaño ocurriría igual, de golpe — justo lo que
+molesta con sensibilidad vestibular. Ahí se anula el transform y el brillo, y
+queda la sombra como única señal.
+
+## 20. El costo de delivery entra antes de enviar, no después
+
+El cliente elige su distrito en la vista previa del pedido. El costo se suma al
+total y viaja desglosado en el mensaje —subtotal, delivery, total.
+
+**Nielsen #1:** el cargo se ve antes de enviar. La alternativa es que el cliente
+mande el pedido creyendo que cuesta S/ 80 y la tienda le responda "más S/ 10 de
+envío". Eso no es un detalle de precio: es la primera respuesta de la tienda
+convertida en una mala noticia.
+
+**Nielsen #6:** el distrito elegido queda en `localStorage`. En la siguiente
+visita ya está puesto.
+
+**Salida productiva:** "Otro distrito" no bloquea nada — avisa que se coordina
+por WhatsApp. Un distrito fuera de cobertura sigue siendo un contacto.
+
+## 21. Hick sobre la lista de zonas
+
+43 distritos al mismo precio son 43 filas que dicen lo mismo. La sección de la
+landing los colapsa en una línea —"Reparto a 43 distritos de Lima Metropolitana ·
+S/ 10"— y vuelve a la lista sola en cuanto el dueño diferencia algún precio.
+
+La lista completa sigue estando en el selector del pedido, que es donde el
+usuario de verdad la necesita: ahí busca **su** distrito, no compara los 43.
+
+## 22. El panel de delivery asume 43 filas en un celular
+
+- **Buscador arriba:** llegar a "Surco" sin recorrer los 43.
+- **"Aplicar a todos" respeta el filtro activo,** igual que el ajuste de precios.
+  Cuando sube la gasolina, el costo sube parejo; sin esto son 43 campos a mano y
+  el dueño termina no actualizando ninguno.
+- **Desmarcar no borra:** el distrito se atenúa y conserva su costo. Se puede
+  reactivar sin recordar cuánto cobraba.
+- **Fila compacta, sin tarjetas ni sombras.** Es una herramienta: manda la
+  densidad.
+- **Nielsen #9:** el costo inválido se marca en su propio campo, y Guardar avisa
+  en vez de mandar datos malos al servidor.
+
+El servidor revalida todo igual —negativos, duplicados, montos absurdos— porque
+este número termina en el total que ve el cliente.

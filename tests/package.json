@@ -1,0 +1,12 @@
+{
+  "name": "boleto-tests",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Prueba del flujo de pedido en un navegador real",
+  "scripts": {
+    "test": "node flujo-pedido.js"
+  },
+  "devDependencies": {
+    "playwright": "^1.62.0"
+  }
+}

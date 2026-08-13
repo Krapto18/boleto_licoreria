@@ -301,8 +301,15 @@
   $('#peek').addEventListener('click', () => abrir($('#bar').dataset.peek !== 'true'));
 
   /* En móvil el chevron es un objetivo chico. Tocar la vista previa
-     completa también la cierra: objetivo grande, misma acción. */
-  document.querySelector('.preview').addEventListener('click', () => abrir(false));
+     completa también la cierra: objetivo grande, misma acción.
+
+     Menos el selector de distrito, que vive acá dentro: sin esta salida,
+     tocarlo cierra la vista previa antes de poder elegir y el distrito se
+     vuelve inseleccionable. */
+  document.querySelector('.preview').addEventListener('click', (e) => {
+    if (e.target.closest('.distrito')) return;
+    abrir(false);
+  });
 
   /* ── Instalar (PWA) ──────────────────────────────────────── */
   let prompt_ = null;
@@ -331,7 +338,22 @@
   function zonasYPagos() {
     const z = $('#zonas');
     if (z && CONFIG.zonas?.length) {
-      z.innerHTML = CONFIG.zonas.map((x) => `
+      /* Con un costo uniforme, listar los 43 distritos es escribir 43 veces
+         lo mismo: puro ruido entre el usuario y el pedido (Hick). Se colapsa
+         en una línea. El selector de la barra sigue teniendo la lista
+         completa, que es donde el usuario de verdad la necesita.
+         Si el dueño diferencia precios por zona, vuelve la lista sola. */
+      const uniforme = new Set(CONFIG.zonas.map((x) => x.c)).size === 1;
+      const n = CONFIG.zonas.length;
+
+      z.innerHTML = (uniforme && n > 3)
+        ? `<li class="zona">
+             <span class="zona__n">Reparto a ${n} distritos de Lima Metropolitana</span>
+             ${CONFIG.zonas[0].c > 0
+               ? `<span class="zona__c">${money(CONFIG.zonas[0].c)}</span>`
+               : '<span class="zona__c--free">Gratis</span>'}
+           </li>`
+        : CONFIG.zonas.map((x) => `
         <li class="zona">
           <span class="zona__n">${esc(x.n)}${x.t ? `<span class="zona__t">${esc(x.t)}</span>` : ''}</span>
           ${x.c > 0
@@ -478,7 +500,13 @@
   pintar();
   actualizar();
   ctas();
-  animarEntrada();
+
+  /* Acá se llamaba animarEntrada(), que no existe en ninguna parte. El
+     ReferenceError abortaba todo lo que viene debajo: el observador que
+     oculta el botón flotante y —peor— el registro del service worker.
+     La PWA nunca llegaba a instalarse y el sitio no abría sin señal, que
+     es justo lo que promete. No hay ningún elemento .reveal en el HTML,
+     así que la función no tenía nada que animar: se quita la llamada. */
 
   /* Mientras el botón del hero se vea, el flotante sobra: dos CTA
      verdes juntos se estorban en vez de reforzarse. */

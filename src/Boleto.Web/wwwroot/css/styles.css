@@ -736,15 +736,27 @@ a {
     position: relative;
     overflow: hidden;
     display: grid;
+    /* La fila se fija al alto de la caja. Sin esto es una fila implícita
+       "auto", y el max-height:86% de la foto se resuelve contra ella en vez
+       de contra los 150px: la foto estira la fila, la fila agranda el tope
+       de la foto, y el overflow:hidden termina cortando la botella por
+       abajo. Con la fila fijada, el 86% vuelve a significar 86% de 150. */
+    grid-template-rows: 100%;
     place-items: center;
     background: radial-gradient(circle at 50% 38%,#FFF,var(--crema) 72%);
     border-bottom: 1px solid var(--crema-2);
 }
 /* Se contiene por ancho Y alto: con solo height la imagen se desborda
-   y tapa el cuerpo de la tarjeta. */
+   y tapa el cuerpo de la tarjeta.
+
+   96/92 y no 86/82: las fotos ya vienen normalizadas con su propio aire
+   —el producto ocupa el 86% del lienzo— así que el margen que agregaba el
+   CSS se sumaba al de la imagen y dejaba la botella en el 73% de la caja.
+   Con esto sube al 82% y sigue sobrando holgura para una foto que suban
+   por el panel sin pasar por tools/preparar_fotos.py. */
 .card__foto {
-    max-width: 82%;
-    max-height: 86%;
+    max-width: 92%;
+    max-height: 96%;
     width: auto;
     height: auto;
     object-fit: contain;

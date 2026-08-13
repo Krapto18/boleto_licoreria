@@ -1154,7 +1154,10 @@ a {
         font-weight: 700;
         font-size: 1.5rem;
         color: var(--crema);
-        font-variant-numeric: tabular-nums
+        font-variant-numeric: tabular-nums;
+        /* En 390 px el total se partía en dos renglones: "S/" arriba y
+           "45.00" abajo. El número que decide la compra no se corta. */
+        white-space: nowrap
     }
 
     .peek__sum span {
@@ -1469,6 +1472,28 @@ body[data-hero="true"] .float {
 
     .orderbar[data-peek="true"] .preview {
         max-height: min(34vh,200px)
+    }
+
+    /* La barra ya se lleva un buen pedazo de una pantalla chica. La fila
+       del distrito se compacta para que sume lo mínimo sin bajar de los
+       44 px de objetivo táctil. */
+    .distrito {
+        gap: 10px;
+        padding: 6px 14px
+    }
+
+    .distrito__lbl {
+        font-size: .62rem;
+        letter-spacing: .08em
+    }
+
+    .orderbar__in {
+        padding: 10px 16px;
+        gap: 14px
+    }
+
+    .peek__sum b {
+        font-size: 1.3rem
     }
 
     #barWa {

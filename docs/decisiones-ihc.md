@@ -444,3 +444,52 @@ real, en escritorio y en móvil con touch, y falla si vuelven.
 
 Una afirmación de accesibilidad que nadie mide se convierte en falsa sin que
 nadie se entere.
+
+## 29. La barra fija medía mal el espacio que ocupa
+
+`--bar-h` es la altura que la barra de pedido le quita al contenido. La usan el
+`padding-bottom` del body, el aviso de deshacer y el botón flotante. Estaba
+escrita a mano como `82px` en JavaScript.
+
+Al mover el distrito a la barra, la altura real pasó a 136 px. El número no se
+enteró, y en móvil eso se veía así:
+
+- El pie de página quedaba **debajo** de la barra: el texto legal de la Ley
+  N° 28681 y el copyright no se podían leer.
+- El aviso de deshacer se dibujaba **encima** de la barra en vez de sobre ella,
+  tapando por completo la fila del distrito durante sus cuatro segundos. El
+  control que define el total quedaba invisible justo después de agregar algo.
+
+Ahora se mide: la barra completa menos la vista previa, redondeando hacia
+arriba una sola vez. Sumar las filas por separado dejaba fuera el borde superior
+de la barra y perdía un píxel; medir por diferencia sigue siendo correcto si
+mañana se le agrega otra fila.
+
+Se remide al girar el teléfono y al terminar de plegarse la vista previa: en
+plena transición se descuenta una altura intermedia y la reserva sale holgada.
+
+**Una constante que describe una medida del layout se vuelve mentira en cuanto
+alguien toca el layout.** Se mide o no se pone.
+
+De paso, en pantallas chicas: el total se partía en dos renglones —"S/" arriba,
+"45.00" abajo— y la fila del distrito se compactó para no comerse la pantalla.
+
+## 30. El panel decía siempre "Precios y stock"
+
+El encabezado no cambiaba con la pestaña: estando en Delivery seguía anunciando
+"Precios y stock" y explicando que los cambios "recién aparecen cuando le das a
+Publicar" — un botón que en esa pantalla no existe.
+
+Ahí se escondía una asimetría real: **solo Precios usa borrador.** Productos,
+Delivery y Banners publican al guardar. Nunca se había dicho, así que el dueño
+podía quedarse esperando un paso de publicación que ya había ocurrido, o creer
+que un cambio seguía en borrador cuando ya estaba en la web.
+
+Cada pestaña ahora dice qué es y cuándo sale a la web.
+
+**Sobre el verde del panel:** el `accent-color` de las casillas de reparto usa
+`--verde`, que ya marcaba el switch de stock (verde sí / rojo no). No contradice
+la regla de Von Restorff del punto 3: esa reserva el verde para WhatsApp en la
+**landing**, y el panel no comparte hoja de estilos ni tiene botones de WhatsApp.
+Dentro del panel, verde significa activo, y significa lo mismo en los dos sitios
+donde aparece.

@@ -128,6 +128,27 @@ async function probar(browser, perfil) {
   /* ── El arranque llega hasta el final ────────────────────────
      Un ReferenceError a media función deja lo de abajo sin ejecutar,
      y ahí es donde se registra el service worker. */
+  /* La barra es fija y tapa el pie de la página: --bar-h reserva ese
+     espacio y posiciona el aviso y el botón flotante. Estuvo clavado en
+     82 px mientras la barra medía 136: el final de la página quedaba
+     debajo y el aviso se dibujaba encima de la barra. */
+  {
+    if (await peek() === 'true') { await p.click('#peek'); await p.waitForTimeout(450); }
+    const m = await p.evaluate(() => {
+      document.documentElement.style.scrollBehavior = 'auto';
+      window.scrollTo(0, document.documentElement.scrollHeight);
+      const bar = document.querySelector('#bar').getBoundingClientRect();
+      const pie = document.querySelector('.legal--c').getBoundingClientRect();
+      return { barra: Math.round(bar.height), holgura: Math.round(bar.top - pie.bottom),
+               reserva: Math.round(parseFloat(getComputedStyle(document.body).paddingBottom)) };
+    });
+    ok(m.reserva >= m.barra,
+       `--bar-h reserva la altura real de la barra (${m.reserva} >= ${m.barra})`);
+    ok(m.holgura >= 0,
+       `el pie de página no queda debajo de la barra (holgura ${m.holgura}px)`);
+    await p.evaluate(() => window.scrollTo(0, 0));
+  }
+
   ok(await p.evaluate(() => navigator.serviceWorker.getRegistration().then((r) => !!r)),
      'el service worker QUEDA REGISTRADO (la PWA abre sin señal)');
   ok(await p.getAttribute('body', 'data-hero') !== null,

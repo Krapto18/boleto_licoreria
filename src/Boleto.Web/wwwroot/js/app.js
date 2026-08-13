@@ -287,11 +287,45 @@
   }
 
   /* ── Barra ───────────────────────────────────────────────── */
+
+  /* --bar-h reserva el espacio que la barra fija le quita al contenido:
+     lo usan el padding del body, el aviso de deshacer y el botón
+     flotante. Estaba clavado en 82px, la altura que tenía la barra antes
+     de que el distrito viviera dentro. Al agregarle una fila, el número
+     dejó de corresponder: el final de la página quedaba tapado y el
+     aviso se dibujaba encima de la barra en vez de sobre ella.
+
+     Se miden las partes permanentes, no la barra entera: la vista previa
+     se pliega y se despliega, y contarla haría saltar la página en cada
+     apertura. */
+  function medirBarra(n) {
+    if (n === 0) { document.body.style.setProperty('--bar-h', '0px'); return; }
+    /* Se mide la barra entera menos la vista previa, en vez de sumar sus
+       filas: sumarlas dejaba fuera el borde superior de la propia barra y
+       la reserva quedaba un píxel corta. Además, así sigue siendo correcto
+       si mañana se le agrega otra fila.
+
+       getBoundingClientRect y no offsetHeight, que redondea cada parte por
+       su cuenta; el redondeo va una sola vez y hacia arriba, al final. */
+    const alto = (s) => document.querySelector(s)?.getBoundingClientRect().height || 0;
+    document.body.style.setProperty(
+      '--bar-h', Math.ceil(alto('#bar') - alto('.preview')) + 'px');
+  }
+
+  /* Al girar el teléfono o cambiar el tamaño, la barra cambia de alto. */
+  window.addEventListener('resize', () => medirBarra(totales().n));
+
+  /* La vista previa tarda .32s en plegarse. Si se mide en pleno movimiento
+     se descuenta una altura intermedia y la reserva queda holgada de más;
+     al terminar la transición el número ya es el definitivo. */
+  document.querySelector('.preview')
+    .addEventListener('transitionend', () => medirBarra(totales().n));
+
   function actualizar() {
     const { n, total } = totales();
     $('#bar').dataset.on = n > 0;
     document.body.dataset.cart = n > 0 ? 'on' : 'off';
-    document.body.style.setProperty('--bar-h', n > 0 ? '82px' : '0px');
+    medirBarra(n);
     if (n === 0) abrir(false);
     $('#barTotal').textContent = money(total + (envio ? envio.c : 0));
     $('#barCount').textContent = n === 1 ? '1 producto' : `${n} productos`;

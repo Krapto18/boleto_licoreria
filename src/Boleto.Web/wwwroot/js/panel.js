@@ -325,12 +325,33 @@
        Precios queda de entrada: es la tarea diaria. Fotos y banners
        son ocasionales y no deben estorbar el flujo rápido.
        ══════════════════════════════════════════════════════════ */
+    /* Cada pestaña dice qué es y —lo que más confunde— cuándo sale a la web.
+       Solo Precios usa borrador; el resto publica al guardar. Sin decirlo,
+       el dueño busca un botón "Publicar" que en esas pantallas no existe. */
+    const AYUDA = {
+        precios: ['Precios y stock',
+            'Cambia lo que necesites. Se guardan como borrador en este dispositivo y ' +
+            '<b>recién aparecen en la web cuando le das a Publicar</b>.'],
+        productos: ['Productos y fotos',
+            'Alta, edición y baja de productos. <b>Lo que guardes acá sale a la web al momento</b>, ' +
+            'no pasa por el borrador de precios.'],
+        delivery: ['Delivery por distrito',
+            'El costo de cada distrito se suma al total del pedido del cliente. ' +
+            '<b>Sale a la web apenas guardas.</b>'],
+        banners: ['Banners',
+            'Hasta 5 imágenes para el carrusel de la página. <b>Salen a la web apenas guardas.</b>']
+    };
+
     $('.tabs')?.addEventListener('click', (e) => {
         const b = e.target.closest('.tab'); if (!b) return;
         document.querySelectorAll('.tab').forEach((x) =>
             x.setAttribute('aria-selected', x === b));
         document.querySelectorAll('.panel').forEach((p) =>
             p.hidden = p.id !== 'panel-' + b.dataset.tab);
+
+        const t = AYUDA[b.dataset.tab];
+        if (t) { $('#ayudaT').textContent = t[0]; $('#ayudaP').innerHTML = t[1]; }
+
         if (b.dataset.tab === 'productos') pintarFotos();
         if (b.dataset.tab === 'delivery') pintarZonas();
         if (b.dataset.tab === 'banners') pintarBanners();

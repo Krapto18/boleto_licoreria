@@ -42,10 +42,17 @@ public class Tienda
     [MaxLength(80)] public string TiempoEntrega { get; set; } = "";
 
     /* ── BANNERS PROMOCIONALES ───────────────────────────────────
-       Uno por línea:  ruta|texto alternativo|enlace opcional
-       Ejemplo:  assets/banners/promo1.webp|Combo fiestero|#catalogo
-       Vacío = el carrusel no aparece. */
-    [MaxLength(2000)] public string Banners { get; set; } = "";
+       Uno por línea:  ruta|texto alternativo|enlace opcional|carrusel
+       Ejemplo:  assets/banners/promo1.webp|Combo fiestero|#catalogo|1
+
+       El cuarto campo dice en cuál de los dos carruseles va: 1 es el de
+       arriba (antes del catálogo) y 2 el de abajo. Sin cuarto campo se
+       asume 1, que es donde estaban los banners de una sola pista.
+
+       4000 y no 2000: son diez banners y cada línea admite 120 de texto
+       alternativo más 200 de enlace. Con 2000 el dueño podía llenar el
+       segundo carrusel y que el guardado reventara contra la columna. */
+    [MaxLength(4000)] public string Banners { get; set; } = "";
 
     /* Verificación de edad (Ley N° 28681). */
     public bool Verificar18 { get; set; } = true;

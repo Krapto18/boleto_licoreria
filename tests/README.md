@@ -71,7 +71,21 @@ los que pasa el cliente y falla si aparece verde en algo que no lleve a
 `wa.me`, si algún estado se queda sin llamado a la vista, o si el texto
 del botón baja de 4.5:1 de contraste.
 
-Detalle de cada corrección en `docs/decisiones-ihc.md`, nivel 5.
+**Navegación.** El sello "Abierto ahora" dejó su sitio a un buscador y en
+móvil el menú se pliega. Esconder navegación cuesta, así que se comprueba
+que lo plegado funcione: que el botón diga si está abierto, que Escape lo
+cierre y devuelva el foco, que elegir una opción lo cierre, que el foco
+entre al abrir y que el botón mida 44 px. Y que el buscador del catálogo
+siga a la vista en móvil **sin** abrir el menú. Los dos campos de búsqueda
+se comprueban sincronizados en los dos sentidos.
+
+**Los dos carruseles.** Cada banner cae en el suyo, cada carrusel tiene
+sus propios puntos, mover uno no marca los del otro, y los puntos se tocan
+a 44 px aunque se dibujen a 9. Los banners se **inyectan en la respuesta**
+porque la base todavía no tiene ninguno: sin eso la función quedaría sin
+probar hasta que el dueño suba el primero, que es tarde para enterarse.
+
+Detalle de cada corrección en `docs/decisiones-ihc.md`, niveles 5 y 6.
 
 ## Antes de correrla
 

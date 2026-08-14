@@ -191,6 +191,34 @@ fijarla, el separador decimal depende de la cultura del hilo: un `10,5` guardado
 en `es-PE` se releería como `105` en un servidor invariante, y ese número
 aparecería en el total del cliente.
 
+## Navegación y banners
+
+Tres cambios pedidos por el dueño. Están hechos y documentados con lo que cuesta
+cada uno en `docs/decisiones-ihc.md`, nivel 6.
+
+**Dos carruseles de cinco banners.** Uno antes del catálogo y otro después, no
+los dos juntos: diez imágenes de 1200×500 seguidas dejaban el catálogo a más de
+tres pantallas de scroll en un móvil. El panel los muestra como "carrusel de
+arriba" y "carrusel de abajo", cinco ranuras cada uno.
+
+Se persisten en `Tienda.Banners` con formato `ruta|alt|enlace|carrusel`. El
+cuarto campo es nuevo: las líneas guardadas antes caen en el carrusel 1, que es
+donde estaban. La columna pasó de 2000 a 4000 caracteres — diez líneas con 120
+de texto alternativo y 200 de enlace no entraban.
+
+**Buscador en el nav, en lugar del sello "Abierto ahora".** El 24/7 lo siguen
+diciendo la franja roja y el hero con la hora del propio cliente, que es lo que
+de verdad lo hace verificable. Hay dos campos de búsqueda —el del nav y el del
+catálogo— porque en móvil el nav se pliega: son el mismo estado y se copian el
+texto entre sí.
+
+**Menú hamburguesa en móvil**, con el logo y el catálogo. Esto contradice a
+Nielsen #6 y es una decisión del cliente, no una recomendación. Se hizo con
+`aria-expanded`, salida con Escape y devolución del foco, cierre al elegir y 44
+px de objetivo. El buscador del catálogo y el botón de WhatsApp **no** están
+detrás del menú: comprar y escribir no dependen de que el cliente descubra la
+hamburguesa.
+
 ## Seguridad del panel
 
 - Login con ASP.NET Core Identity, bloqueo tras 5 intentos.

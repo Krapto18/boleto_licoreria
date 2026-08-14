@@ -530,3 +530,120 @@ prueba lo detectó en los tres botones visibles.
 con puntero fino y solo en la tarjeta apuntada. No compite con el verde, que es
 un color saturado, permanente y siempre presente en pantalla. Un destello
 momentáneo en un elemento no altera la jerarquía de color del punto 3.
+
+---
+---
+
+# Nivel 6 — pedidos del cliente
+
+Este bloque es distinto a los anteriores. No sale de una auditoría: sale de tres
+cambios que **pidió el dueño del negocio** y que en parte van en contra de lo que
+recomienda la heurística. Están hechos igual —es su web y es su decisión— y lo
+que se documenta acá es qué cuesta cada uno y qué se hizo para que costara lo
+menos posible.
+
+## 32. Dos carruseles de cinco, y por qué no van juntos
+
+Lo pedido: dos carruseles de cinco banners en lugar de uno.
+
+Puestos uno debajo del otro serían diez imágenes de 1200×500 entre el hero y el
+catálogo. Medido en un móvil de 390 px, cada banner ocupa 146 px de alto más los
+puntos: el catálogo se iba **a más de tres pantallas de scroll**. El cliente
+entra a comprar y lo primero que encuentra son diez avisos.
+
+Se separaron: **el primero antes del catálogo, el segundo después**. La segunda
+tanda aparece cuando ya terminó de mirar productos, que además es cuando una
+promoción tiene más sentido — ya sabe los precios. El catálogo no se mueve de
+sitio y los diez banners siguen estando.
+
+Si el dueño los quiere pegados, es mover una sección en `Index.cshtml`.
+
+**Detalle que ya estaba mal y salió acá:** los puntos del carrusel se marcaban
+con un `querySelectorAll('.punto')` global. Con una sola pista funcionaba; con
+dos, desplazar la de abajo habría marcado los puntos de la de arriba. Ahora cada
+carrusel busca los suyos.
+
+**Los puntos ahora se tocan.** Medían 9×9 px — la mitad de la mitad de lo que
+pide la WCAG 2.5.5. Se separó lo que se dibuja de lo que se toca: el botón mide
+44×44 y el círculo de 9 px es un pseudoelemento adentro. Agrandar el círculo
+habría convertido los puntos en botones y le habrían competido la atención al
+banner, que es lo que hay que mirar. Nunca falló en la prueba de objetivos
+táctiles porque sin banners cargados el carrusel no existe: habría aparecido
+recién el día que el dueño subiera el primero.
+
+## 33. El buscador en lugar de "Abierto ahora"
+
+El sello del nav era el punto 11: el estado del sistema como propuesta de valor,
+Nielsen #1. Se va.
+
+Lo que se pierde es menos de lo que parece, porque el 24/7 se dice en otros tres
+sitios que no se tocaron: la franja roja de arriba, el titular del hero y el
+párrafo con **la hora del propio cliente** ("Son las 8:52 a. m. y estamos
+atendiendo"), que es el que de verdad lo hace verificable. El sello era el
+recordatorio, no la prueba.
+
+Lo que se gana es real: 55 productos con un solo filtro por categoría. Un
+buscador en la barra fija es el atajo que la Ley de Hick pide cuando la lista es
+larga.
+
+**Hay dos campos de búsqueda y es a propósito.** El del nav no reemplaza al del
+catálogo porque en móvil el nav se pliega, y nadie debería tener que abrir un
+menú para buscar. Son dos vistas del mismo estado: se copian el texto entre sí y
+filtran la misma grilla. Si dijeran cosas distintas, el cliente vería resultados
+filtrados por algo que no está escrito en el campo que tiene delante — Nielsen #4
+roto de la peor manera, en silencio.
+
+**Buscar desde el nav trae el catálogo a la pantalla.** Sin eso, escribir en la
+barra fija mientras se mira el hero es teclear a ciegas: el filtro corre y no se
+ve nada. Solo se desplaza si el catálogo no está ya a la vista y solo con algo
+escrito.
+
+## 34. El menú hamburguesa en móvil
+
+Esto sí es una pérdida y conviene decirlo sin adornos. Esconder la navegación
+detrás de un icono contradice Nielsen #6 —reconocer en vez de recordar—: lo que
+está a la vista se usa; lo que hay que ir a buscar, no. Es una decisión del
+cliente y se hizo.
+
+Lo que se cuidó para que costara lo menos posible:
+
+| | |
+|---|---|
+| **Se anuncia** | `aria-expanded` en el botón, no una clase suelta. El lector de pantalla dice si está abierto |
+| **Se sale** | Escape lo cierra y devuelve el foco al botón. Tocar fuera también (Nielsen #3) |
+| **Se cierra al elegir** | Si no, el panel tapa justo la sección a la que acaba de saltar |
+| **El foco entra** | Al abrir, el foco va a la primera opción: quien navega con teclado no queda tabulando a ciegas |
+| **44 px** | El botón mide 44×44 exactos; las opciones del panel, 52 de alto |
+| **El icono dice el estado** | Las tres barras se vuelven una X. El mismo control cierra, sin agregar un segundo botón |
+| **Opaco** | Fondo sólido, no traslúcido como el nav: detrás pasa el titular del hero y con transparencia el contraste deja de ser el calculado |
+
+**Lo que NO se escondió:** el buscador del catálogo sigue a la vista en móvil sin
+abrir nada, y el botón flotante de WhatsApp tampoco está en el menú. El acceso a
+comprar y el acceso a escribir no dependen de que el cliente descubra la
+hamburguesa.
+
+**Promoción no está en el menú de móvil.** El pedido fue "solo el logo y
+catálogo". La sección sigue existiendo y la franja roja la anuncia en todas las
+pantallas; devolverla al menú es quitar una clase.
+
+El panel no es un modal y no atrapa el foco: es un menú desplegable y tabular
+fuera de él es una salida legítima, no un escape.
+
+## 35. Qué se verifica solo de todo esto
+
+19 comprobaciones nuevas en `tests/flujo-pedido.js`, sobre las 40 que ya había:
+
+- El sello ya no está y el buscador ocupa su lugar
+- Escribir en el nav filtra la grilla y el otro campo repite el texto; borrar en
+  uno limpia el otro
+- En escritorio no hay hamburguesa y el menú sigue desplegado
+- En móvil: el botón mide 44, el menú arranca plegado y lo dice, abre, el foco
+  entra, Escape cierra y devuelve el foco, elegir cierra
+- El buscador del catálogo se ve sin abrir el menú
+- Cada banner cae en su carrusel, cada carrusel tiene sus puntos, mover uno no
+  marca los del otro, y los puntos se tocan a 44 px
+
+Los carruseles se prueban **inyectando banners en la respuesta**, porque la base
+todavía no tiene ninguno cargado. Sin eso, la función quedaría sin probar hasta
+que el dueño subiera el primero — que es tarde para enterarse de que algo no
+funciona.

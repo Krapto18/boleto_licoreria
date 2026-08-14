@@ -372,11 +372,188 @@ async function accesibilidad(browser) {
   }
 }
 
+/* ══════════════════════════════════════════════════════════════
+   Navegación · buscador del nav y menú plegable
+
+   El sello "Abierto ahora" dejó su sitio a un buscador, y en móvil
+   el menú se pliega detrás de una hamburguesa. Esconder navegación
+   cuesta (Nielsen #6): lo que se comprueba acá es que lo que quedó
+   plegado funcione — que diga si está abierto, que se salga con
+   Escape, que se cierre al elegir — y que buscar siga siendo
+   posible sin abrir nada.
+   ══════════════════════════════════════════════════════════════ */
+async function navegacion(browser) {
+  console.log('\n=== NAVEGACIÓN ===');
+
+  const preparar = async (perfil) => {
+    const ctx = await browser.newContext(perfil);
+    const p = await ctx.newPage();
+    await p.goto(URL, { waitUntil: 'networkidle' });
+    if (await p.locator('#edadSi').isVisible().catch(() => false)) await p.click('#edadSi');
+    await p.waitForTimeout(200);
+    return { ctx, p };
+  };
+
+  // ── Escritorio: el menú se queda como estaba, con el buscador ──
+  {
+    const { ctx, p } = await preparar({ viewport: { width: 1280, height: 900 } });
+
+    ok(await p.locator('.status').count() === 0,
+       'el sello "Abierto ahora" ya no está en el nav');
+    ok(await p.isVisible('#qNav'), 'el buscador ocupa su lugar en el nav');
+    ok(!(await p.isVisible('#burger')), 'en escritorio no aparece la hamburguesa');
+    ok(await p.isVisible('.nav__links a[href="#catalogo"]') &&
+       await p.isVisible('.nav__link--esc'),
+       'en escritorio el menú sigue desplegado con Catálogo y Promoción');
+
+    /* Los dos buscadores son el mismo estado: si dijeran cosas
+       distintas, el cliente vería una grilla filtrada por algo que no
+       está escrito en el campo que tiene delante. */
+    const nombre = (await p.textContent('.card .card__name')).trim().split(' ')[0];
+    const antes = await p.locator('.card').count();
+    await p.fill('#qNav', nombre);
+    await p.waitForTimeout(350);
+    const despues = await p.locator('.card').count();
+
+    ok(despues > 0 && despues <= antes,
+       `buscar desde el nav filtra el catálogo (${antes} → ${despues} con "${nombre}")`);
+    ok((await p.inputValue('#q')) === nombre,
+       'el buscador del catálogo repite lo que se escribió en el del nav');
+
+    await p.fill('#q', '');
+    await p.waitForTimeout(300);
+    ok((await p.inputValue('#qNav')) === '' && await p.locator('.card').count() === antes,
+       'borrar en uno limpia el otro y devuelve el catálogo completo');
+
+    await ctx.close();
+  }
+
+  // ── Móvil: logo y hamburguesa, nada más ──
+  {
+    const { ctx, p } = await preparar({ viewport: { width: 390, height: 844 },
+                                        hasTouch: true, isMobile: true });
+
+    const abierto = () => p.getAttribute('#burger', 'aria-expanded');
+
+    ok(await p.isVisible('#burger'), 'en móvil aparece la hamburguesa');
+    const caja = await p.locator('#burger').boundingBox();
+    ok(caja.width >= 44 && caja.height >= 44,
+       `la hamburguesa mide ${Math.round(caja.width)}x${Math.round(caja.height)} (Fitts pide 44)`);
+    ok(!(await p.isVisible('#navMenu')), 'el menú arranca plegado');
+    ok(await abierto() === 'false', 'el botón dice que está cerrado (aria-expanded)');
+
+    /* Que el nav se pliegue no puede dejar sin buscador al cliente:
+       el del catálogo sigue a la vista sin abrir nada. */
+    await p.evaluate(() => {
+      document.documentElement.style.scrollBehavior = 'auto';
+      document.querySelector('#catalogo').scrollIntoView();
+    });
+    await p.waitForTimeout(300);
+    ok(await p.isVisible('#q'), 'el buscador del catálogo se ve sin abrir el menú');
+    await p.evaluate(() => window.scrollTo(0, 0));
+    await p.waitForTimeout(300);
+
+    await p.click('#burger');
+    await p.waitForTimeout(300);
+    ok(await abierto() === 'true' && await p.isVisible('#navMenu'),
+       'la hamburguesa abre el menú y lo anuncia');
+    ok(await p.isVisible('.nav__links a[href="#catalogo"]'),
+       'dentro del menú está el catálogo');
+    ok(!(await p.isVisible('.nav__link--esc')),
+       'en móvil el menú queda con lo pedido: solo el catálogo');
+    ok(await p.evaluate(() => document.activeElement?.closest('#navMenu') !== null),
+       'al abrir, el foco entra al menú');
+
+    // Nielsen #3 · salida de emergencia
+    await p.keyboard.press('Escape');
+    await p.waitForTimeout(250);
+    ok(await abierto() === 'false' && !(await p.isVisible('#navMenu')),
+       'Escape cierra el menú');
+    ok(await p.evaluate(() => document.activeElement?.id === 'burger'),
+       'y el foco vuelve al botón que lo abrió');
+
+    await p.click('#burger');
+    await p.waitForTimeout(250);
+    await p.click('.nav__links a[href="#catalogo"]');
+    await p.waitForTimeout(400);
+    ok(await abierto() === 'false',
+       'elegir una opción cierra el menú (si no, tapa la sección a la que salta)');
+
+    await ctx.close();
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   Los dos carruseles
+
+   La base todavía no tiene banners cargados, así que se inyectan
+   en la respuesta: sin esto la función quedaría sin probar hasta
+   que el dueño suba el primero, que es tarde para enterarse.
+   ══════════════════════════════════════════════════════════════ */
+async function carruseles(browser) {
+  console.log('\n=== CARRUSELES ===');
+
+  const falsos = [];
+  for (let i = 1; i <= 5; i++) falsos.push({ img: '/assets/logo.svg', alt: `Arriba ${i}`, url: '', g: 1 });
+  for (let i = 1; i <= 3; i++) falsos.push({ img: '/assets/logo.svg', alt: `Abajo ${i}`, url: '', g: 2 });
+
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 },
+                                         hasTouch: true, isMobile: true });
+  const p = await ctx.newPage();
+
+  await p.route(URL, async (route) => {
+    const r = await route.fetch();
+    const html = (await r.text()).replace(/"banners":\[[^\]]*\]/,
+      '"banners":' + JSON.stringify(falsos));
+    await route.fulfill({ response: r, body: html });
+  });
+
+  await p.goto(URL, { waitUntil: 'networkidle' });
+  if (await p.locator('#edadSi').isVisible().catch(() => false)) await p.click('#edadSi');
+  await p.waitForTimeout(300);
+
+  const n = async (sel) => p.locator(sel).count();
+
+  ok(await p.evaluate(() => (CONFIG.banners || []).length) === 8,
+     'la inyección llegó: 8 banners repartidos en dos carruseles');
+  ok(await n('#pista1 .banner') === 5 && await n('#pista2 .banner') === 3,
+     `cada banner cae en su carrusel (arriba ${await n('#pista1 .banner')}, abajo ${await n('#pista2 .banner')})`);
+  ok(await n('#puntos1 .punto') === 5 && await n('#puntos2 .punto') === 3,
+     'cada carrusel tiene sus propios puntos');
+
+  const orden = await p.evaluate(() => {
+    const y = (s) => document.querySelector(s).getBoundingClientRect().top + window.scrollY;
+    return { arriba: y('#bannersSec1'), cat: y('#catalogo'), abajo: y('#bannersSec2') };
+  });
+  ok(orden.arriba < orden.cat && orden.abajo > orden.cat,
+     'uno antes del catálogo y otro después: el catálogo no queda enterrado');
+
+  /* Antes los puntos se buscaban con un querySelectorAll global.
+     Con dos pistas, mover una habría marcado los puntos de la otra. */
+  await p.click('#puntos2 .punto[data-i="1"]');
+  await p.waitForTimeout(600);
+  const sel = await p.evaluate(() => {
+    const cual = (id) => [...document.querySelectorAll(id + ' .punto')]
+      .findIndex((b) => b.getAttribute('aria-selected') === 'true');
+    return { uno: cual('#puntos1'), dos: cual('#puntos2') };
+  });
+  ok(sel.dos === 1 && sel.uno === 0,
+     `mover un carrusel no marca los puntos del otro (arriba ${sel.uno}, abajo ${sel.dos})`);
+
+  const punto = await p.locator('#puntos1 .punto').first().boundingBox();
+  ok(punto.width >= 44 && punto.height >= 44,
+     `los puntos se tocan a ${Math.round(punto.width)}x${Math.round(punto.height)} aunque se dibujen a 9`);
+
+  await ctx.close();
+}
+
 (async () => {
   const browser = await abrirNavegador();
   try {
     for (const perfil of PERFILES) await probar(browser, perfil);
     await accesibilidad(browser);
+    await navegacion(browser);
+    await carruseles(browser);
   } finally {
     await browser.close();
   }

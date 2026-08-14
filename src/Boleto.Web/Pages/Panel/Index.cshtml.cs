@@ -156,16 +156,23 @@ public class IndexModel(CatalogoService svc, IAlmacen almacen, ILogger<IndexMode
         }
     }
 
-    /// <summary>Sube un banner del carrusel.</summary>
+    /// <summary>Sube un banner. <paramref name="grupo"/> es el carrusel: 1 arriba, 2 abajo.</summary>
     public async Task<IActionResult> OnPostBannerAsync(
-        int indice, IFormFile archivo, CancellationToken ct)
+        int grupo, int indice, IFormFile archivo, CancellationToken ct)
     {
         try
         {
-            if (indice is < 0 or > 4)
-                return BadRequest(new { error = "El carrusel admite un máximo de 5 banners." });
+            if (grupo is < 1 or > CatalogoService.Carruseles)
+                return BadRequest(new { error = "Ese carrusel no existe." });
+            if (indice < 0 || indice >= CatalogoService.BannersPorCarrusel)
+                return BadRequest(new
+                {
+                    error = $"Cada carrusel admite un máximo de {CatalogoService.BannersPorCarrusel} banners."
+                });
 
-            var url = await almacen.GuardarAsync(archivo, "banners", $"banner-{indice + 1}", ct);
+            // El nombre lleva el carrusel: si no, el banner 1 de abajo
+            // pisaría el archivo del banner 1 de arriba.
+            var url = await almacen.GuardarAsync(archivo, "banners", $"banner-{grupo}-{indice + 1}", ct);
             return new JsonResult(new { ok = true, url });
         }
         catch (InvalidOperationException ex) { return BadRequest(new { error = ex.Message }); }

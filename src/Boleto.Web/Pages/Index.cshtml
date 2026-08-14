@@ -32,19 +32,42 @@
 
 <div class="promobar"><div class="promobar__t" id="promobar"></div></div>
 
-<!-- ══════════ NAV ══════════ -->
+<!-- ══════════ NAV ══════════
+     El buscador ocupa el lugar donde estaba el sello "Abierto ahora".
+     El 24/7 no se pierde: lo siguen diciendo la franja roja de arriba y
+     el hero con la hora del propio cliente.
+
+     En móvil el menú se pliega en una hamburguesa. Es una decisión del
+     cliente, no una recomendación: esconder la navegación cuesta clics
+     (Nielsen #6, reconocer en vez de recordar). Lo que sí se cuida es
+     que el que quede plegado funcione bien — foco, Escape, 44 px — y
+     que el buscador del catálogo siga a la vista sin abrir nada. -->
 <nav class="nav">
   <div class="nav__in">
     <a href="#" class="logo" aria-label="Boleto Licorería — inicio">
       <span class="logo__mark">B</span>
       <span class="logo__txt">Boleto<small>Licorería</small></span>
     </a>
-    <div class="nav__links">
-      <a href="#catalogo">Catálogo</a>
-      <a href="#promo">Promoción</a>
+
+    <button class="burger" id="burger" type="button"
+            aria-expanded="false" aria-controls="navMenu" aria-label="Abrir menú">
+      <span class="burger__caja" aria-hidden="true"><i></i><i></i><i></i></span>
+    </button>
+
+    <div class="nav__menu" id="navMenu">
+      <div class="nav__links">
+        <a href="#catalogo">Catálogo</a>
+        @* Solo en escritorio: en móvil el cliente pidió únicamente
+           el logo y el catálogo. La promoción sigue a un scroll y la
+           franja roja la anuncia en todas las pantallas. *@
+        <a href="#promo" class="nav__link--esc">Promoción</a>
+      </div>
+      <label class="search search--nav">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+        <input type="search" id="qNav" placeholder="Buscar producto…"
+               aria-label="Buscar producto en el catálogo" autocomplete="off">
+      </label>
     </div>
-    <!-- Nielsen #1 · el estado del sistema ES la propuesta de valor -->
-    <span class="status" id="status"><i></i><em>Abierto ahora</em><b id="reloj"></b></span>
   </div>
 </nav>
 
@@ -76,14 +99,21 @@
   </div>
 </header>
 
-<!-- ══════════ BANNERS ══════════
-     Se rinde solo si hay banners cargados. Sin imágenes, no aparece. -->
-<section class="banners" id="bannersSec" hidden>
+<!-- ══════════ BANNERS · CARRUSEL 1 ══════════
+     Cada carrusel se rinde solo si tiene banners cargados. Sin
+     imágenes, no aparece ninguno de los dos.
+
+     Los dos no van juntos a propósito: diez banners de 1200×500 uno
+     debajo del otro empujan el catálogo fuera de la primera pantalla,
+     que es lo que el cliente vino a ver. El primero va antes del
+     catálogo y el segundo después, así la segunda tanda aparece cuando
+     ya terminó de mirar productos. -->
+<section class="banners" id="bannersSec1" hidden>
   <div class="wrap">
-    <div class="carrusel" id="carrusel" role="region" aria-roledescription="carrusel" aria-label="Promociones">
-      <div class="carrusel__pista" id="pista"></div>
+    <div class="carrusel" id="carrusel1" role="region" aria-roledescription="carrusel" aria-label="Promociones">
+      <div class="carrusel__pista" id="pista1"></div>
     </div>
-    <div class="carrusel__puntos" id="puntos" role="tablist" aria-label="Ir a promoción"></div>
+    <div class="carrusel__puntos" id="puntos1" role="tablist" aria-label="Ir a promoción"></div>
   </div>
 </section>
 
@@ -132,6 +162,16 @@
     <p class="count" id="count" role="status"></p>
     <div class="grid" id="grid"></div>
     <p class="empty" id="empty" hidden>No encontramos eso. Escríbenos y lo conseguimos.</p>
+  </div>
+</section>
+
+<!-- ══════════ BANNERS · CARRUSEL 2 ══════════ -->
+<section class="banners banners--abajo" id="bannersSec2" hidden>
+  <div class="wrap">
+    <div class="carrusel" id="carrusel2" role="region" aria-roledescription="carrusel" aria-label="Más promociones">
+      <div class="carrusel__pista" id="pista2"></div>
+    </div>
+    <div class="carrusel__puntos" id="puntos2" role="tablist" aria-label="Ir a promoción"></div>
   </div>
 </section>
 

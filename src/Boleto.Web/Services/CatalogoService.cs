@@ -117,7 +117,11 @@ public class CatalogoService(
              })
              .ToArray();
 
-    /// <summary>Formato por línea: ruta|alt|enlace</summary>
+    /// <summary>
+    /// Formato por línea: ruta|alt|enlace|carrusel. El cuarto campo es el
+    /// carrusel (1 arriba, 2 abajo); las líneas guardadas antes de que
+    /// hubiera dos pistas no lo traen y caen en el 1, que es donde estaban.
+    /// </summary>
     private static BannerDto[] ParsearBanners(string texto) =>
         texto.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
              .Select(l => l.Split('|'))
@@ -126,7 +130,8 @@ public class CatalogoService(
              {
                  Img = p[0].Trim(),
                  Alt = p.Length > 1 ? p[1].Trim() : "",
-                 Url = p.Length > 2 ? p[2].Trim() : ""
+                 Url = p.Length > 2 ? p[2].Trim() : "",
+                 Grupo = p.Length > 3 && p[3].Trim() == "2" ? 2 : 1
              })
              .ToArray();
 
@@ -346,21 +351,46 @@ public class CatalogoService(
         log.LogInformation("Zonas de reparto actualizadas: {N} distritos", lista.Count);
     }
 
-    /// <summary>Reemplaza la lista de banners. Máximo 5.</summary>
+    /// <summary>Cuántos carruseles tiene la página y cuántos banners cabe en cada uno.</summary>
+    public const int Carruseles = 2;
+    public const int BannersPorCarrusel = 5;
+
+    /// <summary>
+    /// Reemplaza la lista de banners. Dos carruseles de cinco: el de
+    /// arriba (1) y el de abajo (2).
+    /// </summary>
     public async Task GuardarBannersAsync(IEnumerable<BannerDto> banners, CancellationToken ct = default)
     {
         /* Sin Take(5): truncaba en silencio y dejaba el tope de abajo como
-           código muerto. Si llegan más de cinco, algo pasó — se avisa. */
-        var lista = banners.Where(b => !string.IsNullOrWhiteSpace(b.Img)).ToList();
-        if (lista.Count > 5)
-            throw new InvalidOperationException("El carrusel admite un máximo de 5 banners.");
+           código muerto. Si llegan más de la cuenta, algo pasó — se avisa. */
+        var lista = banners
+            .Where(b => !string.IsNullOrWhiteSpace(b.Img))
+            .Select(b => b with { Grupo = b.Grupo == 2 ? 2 : 1 })
+            .ToList();
+
+        foreach (var g in lista.GroupBy(b => b.Grupo))
+            if (g.Count() > BannersPorCarrusel)
+                throw new InvalidOperationException(
+                    $"El carrusel {g.Key} admite un máximo de {BannersPorCarrusel} banners.");
+
+        // Los saltos de línea y las barras son los separadores del formato:
+        // si entran en un texto, parten la línea en campos que no existen.
+        static string Limpio(string? s) =>
+            (s ?? "").Replace('|', ' ').Replace('\n', ' ').Replace('\r', ' ').Trim();
+
+        var texto = string.Join('\n', lista.Select(b =>
+            $"{Limpio(b.Img)}|{Limpio(b.Alt)}|{Limpio(b.Url)}|{b.Grupo}"));
+
+        if (texto.Length > 4000)
+            throw new InvalidOperationException(
+                "Los textos de los banners no entran en el espacio disponible. " +
+                "Acorta las descripciones o los enlaces.");
 
         await using var db = await factory.CreateDbContextAsync(ct);
         var t = await db.Tienda.FirstOrDefaultAsync(ct)
                 ?? throw new InvalidOperationException("No hay configuración de tienda.");
 
-        t.Banners = string.Join('\n', lista.Select(b =>
-            $"{b.Img}|{b.Alt?.Replace('|', ' ')}|{b.Url?.Replace('|', ' ')}"));
+        t.Banners = texto;
 
         await db.SaveChangesAsync(ct);
         Invalidar();

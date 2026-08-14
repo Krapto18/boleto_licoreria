@@ -292,10 +292,19 @@ a {
         color: var(--tx-tenue)
     }
 
+/* En escritorio el menú es una fila del nav; en móvil, un panel que
+   cuelga de la hamburguesa. Es el mismo marcado: solo cambia cómo se
+   coloca. Un segundo menú duplicado se desincroniza tarde o temprano. */
+.nav__menu {
+    display: flex;
+    align-items: center;
+    gap: 22px;
+    margin-left: auto
+}
+
 .nav__links {
     display: flex;
     gap: 26px;
-    margin-left: auto;
     font-size: .88rem;
     font-weight: 500
 }
@@ -314,64 +323,63 @@ a {
             color: var(--crema)
         }
 
-@media(max-width:860px) {
-    .nav__links {
-        display: flex;
-        gap: 18px;
-        font-size: .82rem
-    }
+/* Buscador del nav · ocupa el sitio del sello "Abierto ahora".
+   Es el mismo componente que el del catálogo, más bajo: acá es un
+   atajo, no el buscador principal. Que se vean iguales es a propósito
+   — uno aprende una vez cómo se busca (Nielsen #4). */
+.search--nav {
+    min-height: 40px;
+    max-width: 260px;
+    padding: 6px 16px;
+    margin-bottom: 0;
+    background: rgba(247,241,227,.07)
 }
 
-.status {
-    display: inline-flex;
-    align-items: center;
-    gap: 9px;
-    flex-shrink: 0;
+    .search--nav input {
+        font-size: .88rem
+    }
+
+/* ── Hamburguesa · solo móvil ─────────────────────────────── */
+.burger {
+    display: none;
+    width: 44px;
+    height: 44px;
     margin-left: auto;
-    font-size: .72rem;
-    font-weight: 600;
-    letter-spacing: .12em;
-    text-transform: uppercase;
-    padding: 8px 15px;
-    border-radius: 99px;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    border-radius: 12px;
     border: 1px solid rgba(247,241,227,.28);
     background: rgba(247,241,227,.07);
     color: var(--crema)
 }
 
-    .status i {
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        background: currentColor;
-        animation: pulse 2.4s infinite;
-        flex-shrink: 0
-    }
-
-    .status em {
-        font-style: normal
-    }
-
-    .status b {
-        font-weight: 500;
-        opacity: .72;
-        font-variant-numeric: tabular-nums
-    }
-
-@keyframes pulse {
-    0%,100% {
-        opacity: 1
-    }
-
-    50% {
-        opacity: .28
-    }
+.burger__caja {
+    display: grid;
+    gap: 4px;
+    width: 20px
 }
 
-@media(max-width:520px) {
-    .status b {
-        display: none
+    .burger__caja i {
+        display: block;
+        height: 2px;
+        border-radius: 2px;
+        background: currentColor;
+        transition: transform .2s, opacity .2s
     }
+
+/* Abierto, las tres barras se vuelven una X: el mismo botón sirve
+   para cerrar y se ve que sirve, sin agregar un segundo control. */
+.burger[aria-expanded="true"] .burger__caja i:nth-child(1) {
+    transform: translateY(6px) rotate(45deg)
+}
+
+.burger[aria-expanded="true"] .burger__caja i:nth-child(2) {
+    opacity: 0
+}
+
+.burger[aria-expanded="true"] .burger__caja i:nth-child(3) {
+    transform: translateY(-6px) rotate(-45deg)
 }
 
 /* ── Hero ─────────────────────────────────────────────────── */
@@ -1722,6 +1730,12 @@ img.i-wa {
     padding: 20px 0 0
 }
 
+/* El segundo carrusel va después del catálogo. Necesita aire arriba y
+   abajo: ahí ya no separa dos secciones, se mete entre ellas. */
+.banners--abajo {
+    padding: 10px 0 34px
+}
+
 .carrusel {
     overflow-x: auto;
     overflow-y: hidden;
@@ -1755,21 +1769,33 @@ img.i-wa {
 
 .carrusel__puntos {
     display: flex;
-    gap: 8px;
     justify-content: center;
-    margin-top: 14px
+    margin-top: 4px
 }
 
+/* El punto que se ve mide 9 px; el que se toca, 44. Se separa el
+   dibujo del área táctil con un pseudoelemento: agrandar el círculo
+   habría convertido los puntos en botones y le habrían competido la
+   atención al banner, que es lo que hay que mirar. */
 .punto {
-    width: 9px;
-    height: 9px;
-    border-radius: 50%;
+    width: 44px;
+    height: 44px;
     padding: 0;
-    background: var(--marino-3);
-    transition: background .2s,transform .2s;
+    background: none;
+    display: grid;
+    place-items: center
 }
 
-    .punto[aria-selected="true"] {
+    .punto::before {
+        content: '';
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        background: var(--marino-3);
+        transition: background .2s, transform .2s
+    }
+
+    .punto[aria-selected="true"]::before {
         background: var(--rojo);
         transform: scale(1.35)
     }
@@ -1957,18 +1983,91 @@ body[data-edad="pendiente"] {
    última. Ponerlas antes fue el error que desbordaba el nav.
    ══════════════════════════════════════════════════════════════ */
 @media(max-width:860px) {
-    /* Un indicador de estado sugiere que a veces cierran, y no es así.
-     El 24/7 ya lo dicen la franja roja y el hero. */
-    .status {
-        display: none !important
-    }
-
     .nav__in {
         gap: 14px
     }
 
+    /* La barra queda con lo que pidió el cliente: logo y hamburguesa.
+       Todo lo demás baja al panel. */
+    .burger {
+        display: flex
+    }
+
+    /* El panel se posiciona contra el .nav, que ya es sticky y por eso
+       hace de referencia: cuelga del borde de abajo de la barra. */
+    .nav__menu {
+        display: none;
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+        margin: 0;
+        padding: 12px 20px 18px;
+        /* Opaco, no traslúcido como el nav: detrás pasa el titular del
+           hero y con cualquier transparencia el contraste del menú deja
+           de ser el que se calculó (WCAG 1.4.3). */
+        background: var(--marino);
+        border-bottom: 1px solid var(--marino-3);
+        box-shadow: 0 18px 40px rgba(0,0,0,.45);
+        animation: bajaMenu .18s ease-out
+    }
+
+    /* El estado lo manda el propio botón: no hay una clase que pueda
+       quedar desfasada del aria-expanded que lee el lector de pantalla. */
+    .burger[aria-expanded="true"] + .nav__menu {
+        display: flex
+    }
+
+    /* El buscador primero: es lo que vino a reemplazar al sello y lo
+       que más se usa. Debajo, la navegación. */
+    .search--nav {
+        order: -1;
+        max-width: none;
+        min-height: 48px
+    }
+
     .nav__links {
-        margin-left: auto
+        flex-direction: column;
+        gap: 0;
+        font-size: 1rem
+    }
+
+        .nav__links a {
+            min-height: 52px;
+            color: var(--crema)
+        }
+
+        /* Separador entre opciones, nunca colgando de la última. */
+        .nav__links a + a {
+            border-top: 1px solid var(--marino-3)
+        }
+
+    /* En móvil el cliente pidió solo el logo y el catálogo.
+       Va con el elemento delante: `.nav__links a` de arriba pesa más
+       que una clase sola y le devolvía el display:inline-flex. */
+    .nav__links a.nav__link--esc {
+        display: none
+    }
+}
+
+@keyframes bajaMenu {
+    from {
+        opacity: 0;
+        transform: translateY(-8px)
+    }
+
+    to {
+        opacity: 1;
+        transform: none
+    }
+}
+
+@media(prefers-reduced-motion:reduce) {
+    .nav__menu {
+        animation: none
     }
 }
 

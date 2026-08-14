@@ -1199,6 +1199,32 @@ a {
     margin-bottom: 20px
 }
 
+/* Los dos carruseles se ven como dos bloques con nombre. El dueño no
+   tiene que acordarse de cuál es cuál: cada uno dice dónde sale. */
+.banner-grupo {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding-top: 18px
+}
+
+    .banner-grupo + .banner-grupo {
+        margin-top: 10px;
+        border-top: 1px solid var(--marino-3)
+    }
+
+.banner-grupo__h {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--tx-claro)
+}
+
+.banner-grupo__p {
+    margin-top: -8px;
+    font-size: .82rem;
+    color: var(--tx-tenue)
+}
+
 .banner-adm {
     display: grid;
     grid-template-columns: 180px 1fr auto;

@@ -35,10 +35,14 @@
      Reloj — hace verificable el 24/7. El usuario ve su propia
      hora y la web le confirma que hay alguien atendiendo.
      ══════════════════════════════════════════════════════════ */
+  /* El sello del nav se fue para dejarle el sitio al buscador, así que
+     #reloj puede no existir. El del hero sigue siendo el que importa:
+     es el que va acompañado de "y estamos atendiendo". */
   function reloj() {
     const t = new Date().toLocaleTimeString('es-PE',
       { hour: 'numeric', minute: '2-digit', hour12: true });
-    $('#reloj').textContent = t;
+    const nav = $('#reloj');
+    if (nav) nav.textContent = t;
     $('#relojHero').textContent = t;
   }
 
@@ -89,9 +93,47 @@
     document.querySelectorAll('.chip').forEach((c) => c.setAttribute('aria-pressed', c.dataset.g === grupo));
     pintar();
   });
-  $('#q').addEventListener('input', (e) => { busca = e.target.value.trim().toLowerCase(); pintar(); });
+  /* ══════════════════════════════════════════════════════════
+     Buscador · dos campos, un solo estado
+     El del nav reemplazó al sello "Abierto ahora". El del catálogo se
+     queda porque en móvil el nav se pliega y nadie debería tener que
+     abrir un menú para buscar. Los dos escriben el mismo filtro y se
+     copian el texto: nunca muestran cosas distintas (Nielsen #4).
+     ══════════════════════════════════════════════════════════ */
+  const CAMPOS_Q = ['#q', '#qNav'];
+
+  function buscar(texto, origen) {
+    busca = texto.trim().toLowerCase();
+    CAMPOS_Q.forEach((s) => {
+      const el = $(s);
+      if (el && el !== origen) el.value = texto;
+    });
+    pintar();
+  }
+
+  /* Buscar desde el nav sin ver la grilla es teclear a ciegas: si el
+     catálogo no está en pantalla, se trae. Nielsen #1 — el sistema
+     tiene que mostrar el efecto de lo que uno hace. */
+  let acercando = false;
+  function acercarCatalogo() {
+    const sec = document.getElementById('catalogo');
+    const alto = document.querySelector('.nav')?.getBoundingClientRect().height || 0;
+    const r = sec.getBoundingClientRect();
+    if (r.top <= alto + 8 && r.bottom > window.innerHeight / 2) return;  // ya se ve
+    if (acercando) return;
+    acercando = true;
+    sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    setTimeout(() => { acercando = false; }, 700);
+  }
+
+  CAMPOS_Q.forEach((s) => $(s)?.addEventListener('input', (e) => {
+    buscar(e.target.value, e.target);
+    if (e.target.id === 'qNav' && busca) acercarCatalogo();
+  }));
+
   $('#promoBtn').addEventListener('click', () => {
-    grupo = 'Todo'; busca = ''; $('#q').value = ''; chips();
+    grupo = 'Todo'; chips();
+    buscar('');
     pintar(orden(PRODUCTOS.filter((p) => p.promo)));
     document.getElementById('catalogo').scrollIntoView({ behavior: 'smooth' });
   });
@@ -513,37 +555,89 @@
   }
 
   /* ══════════════════════════════════════════════════════════
-     Carrusel de banners
+     Carruseles de banners · dos pistas de cinco
      Desplazamiento nativo con anclaje: sin librerías, funciona con
      el dedo y con teclado, y no bloquea el scroll de la página.
+
+     Cada banner trae en qué carrusel va (b.g): 1 el de arriba, 2 el
+     de abajo. Sin ese dato cae en el 1, que es donde vivían los
+     banners cuando había una sola pista.
+
+     Los puntos se buscan dentro de su propio carrusel. Antes se
+     leían con un querySelectorAll global — con dos pistas, mover una
+     habría marcado los puntos de la otra.
      ══════════════════════════════════════════════════════════ */
-  function carrusel() {
-    const banners = CONFIG.banners || [];
+  function carrusel(g) {
+    const banners = (CONFIG.banners || []).filter((b) => (b.g || 1) === g);
     if (!banners.length) return;
 
-    $('#bannersSec').hidden = false;
-    $('#pista').innerHTML = banners.map((b, i) => b.url
-      ? `<a class="banner" href="${esc(b.url)}"><img src="${esc(b.img)}" alt="${esc(b.alt || '')}" loading="${i ? 'lazy' : 'eager'}"></a>`
-      : `<div class="banner"><img src="${esc(b.img)}" alt="${esc(b.alt || '')}" loading="${i ? 'lazy' : 'eager'}"></div>`
+    const primera = (i) => (g === 1 && i === 0 ? 'eager' : 'lazy');
+
+    $('#bannersSec' + g).hidden = false;
+    $('#pista' + g).innerHTML = banners.map((b, i) => b.url
+      ? `<a class="banner" href="${esc(b.url)}"><img src="${esc(b.img)}" alt="${esc(b.alt || '')}" loading="${primera(i)}"></a>`
+      : `<div class="banner"><img src="${esc(b.img)}" alt="${esc(b.alt || '')}" loading="${primera(i)}"></div>`
     ).join('');
 
     if (banners.length < 2) return;
 
-    const pista = $('#carrusel');
-    $('#puntos').innerHTML = banners.map((_, i) =>
+    const pista = $('#carrusel' + g);
+    const puntos = $('#puntos' + g);
+    puntos.innerHTML = banners.map((_, i) =>
       `<button class="punto" role="tab" data-i="${i}" aria-selected="${i === 0}" aria-label="Promoción ${i + 1}"></button>`
     ).join('');
 
-    $('#puntos').addEventListener('click', (e) => {
+    puntos.addEventListener('click', (e) => {
       const b = e.target.closest('.punto'); if (!b) return;
       pista.scrollTo({ left: pista.clientWidth * +b.dataset.i, behavior: 'smooth' });
     });
 
     pista.addEventListener('scroll', () => {
       const i = Math.round(pista.scrollLeft / pista.clientWidth);
-      document.querySelectorAll('.punto').forEach((p, n) =>
+      puntos.querySelectorAll('.punto').forEach((p, n) =>
         p.setAttribute('aria-selected', n === i));
     }, { passive: true });
+  }
+
+  /* ══════════════════════════════════════════════════════════
+     Menú plegable de móvil
+     Esconder la navegación detrás de un icono es lo que pidió el
+     cliente. Se hace, pero bien hecho: el botón dice si está abierto
+     o cerrado (aria-expanded), se sale con Escape o tocando fuera
+     (Nielsen #3), y elegir una opción lo cierra — si no, el propio
+     panel tapa la sección a la que acaba de saltar.
+     ══════════════════════════════════════════════════════════ */
+  function menu() {
+    const btn = $('#burger'), caja = $('#navMenu');
+    if (!btn || !caja) return;
+
+    const abierto = () => btn.getAttribute('aria-expanded') === 'true';
+    const abrir = (v) => {
+      btn.setAttribute('aria-expanded', String(v));
+      btn.setAttribute('aria-label', v ? 'Cerrar menú' : 'Abrir menú');
+      document.body.dataset.menu = v;
+      if (v) caja.querySelector('a')?.focus();
+    };
+
+    btn.addEventListener('click', () => abrir(!abierto()));
+    caja.addEventListener('click', (e) => { if (e.target.closest('a')) abrir(false); });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && abierto()) { abrir(false); btn.focus(); }
+    });
+
+    /* El clic del propio botón también llega hasta acá, pero está
+       dentro de .nav: no se cierra apenas se abre. */
+    document.addEventListener('click', (e) => {
+      if (abierto() && !e.target.closest('.nav')) abrir(false);
+    });
+
+    /* Al pasar a escritorio el panel vuelve a ser una fila del nav.
+       Se deja cerrado para que aria-expanded no diga "abierto" sobre
+       un botón que ya ni se ve. */
+    matchMedia('(min-width:861px)').addEventListener('change', (e) => {
+      if (e.matches && abierto()) abrir(false);
+    });
   }
 
   /* ── CTAs ────────────────────────────────────────────────── */
@@ -563,7 +657,8 @@
   medicion();
   reloj(); setInterval(reloj, 30000);
   promobar();
-  carrusel();
+  carrusel(1); carrusel(2);
+  menu();
   zonasYPagos();
   distrito();
   chips();

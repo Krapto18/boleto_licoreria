@@ -57,6 +57,9 @@ public record BannerDto
     [JsonPropertyName("img")] public string Img { get; init; } = "";
     [JsonPropertyName("alt")] public string Alt { get; init; } = "";
     [JsonPropertyName("url")] public string Url { get; init; } = "";
+
+    /// <summary>Carrusel al que pertenece: 1 arriba, 2 abajo.</summary>
+    [JsonPropertyName("g")]   public int Grupo { get; init; } = 1;
 }
 
 public record CatalogoDto(ConfigDto Config, string[] Grupos, ProductoDto[] Productos);

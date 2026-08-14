@@ -339,7 +339,8 @@
             'El costo de cada distrito se suma al total del pedido del cliente. ' +
             '<b>Sale a la web apenas guardas.</b>'],
         banners: ['Banners',
-            'Hasta 5 imágenes para el carrusel de la página. <b>Salen a la web apenas guardas.</b>']
+            'Dos carruseles de hasta 5 imágenes cada uno. ' +
+            '<b>Salen a la web apenas guardas.</b>']
     };
 
     $('.tabs')?.addEventListener('click', (e) => {
@@ -718,18 +719,35 @@
     });
 
     /* ══════════════════════════════════════════════════════════
-       Banners · máximo 5
+       Banners · dos carruseles de 5
+
+       Cada carrusel es una lista aparte. Podrían ser una sola lista
+       con un campo "grupo", pero entonces quitar un banner del de
+       arriba correría uno del de abajo hacia arriba, que es justo lo
+       que el dueño no espera. Separadas, cada tira se comporta sola.
        ══════════════════════════════════════════════════════════ */
-    let banners = (CONFIG.banners || []).slice(0, 5).map((b) => ({ ...b }));
+    const MAX_BANNER = 5;
+    const CARRUSELES = [
+        [1, 'Carrusel de arriba', 'Se ve apenas entran, antes del catálogo.'],
+        [2, 'Carrusel de abajo', 'Se ve al terminar de mirar los productos.']
+    ];
+
+    const banners = { 1: [], 2: [] };
+    (CONFIG.banners || []).forEach((b) => {
+        const g = b.g === 2 ? 2 : 1;
+        if (banners[g].length < MAX_BANNER) banners[g].push({ ...b, g });
+    });
 
     function pintarBanners() {
-        /* Siempre se muestran 5 ranuras: se ve de una cuántas quedan
-           libres, sin tener que contar ni leer una advertencia. */
-        const filas = [];
-        for (let i = 0; i < 5; i++) {
-            const b = banners[i] || { img: '', alt: '', url: '' };
-            filas.push(`
-        <div class="banner-adm" data-i="${i}">
+        if (!$('#bannersAdm')) return;
+        /* Siempre se muestran 5 ranuras por carrusel: se ve de una
+           cuántas quedan libres, sin contar ni leer una advertencia. */
+        $('#bannersAdm').innerHTML = CARRUSELES.map(([g, titulo, nota]) => {
+            const filas = [];
+            for (let i = 0; i < MAX_BANNER; i++) {
+                const b = banners[g][i] || { img: '', alt: '', url: '' };
+                filas.push(`
+        <div class="banner-adm" data-g="${g}" data-i="${i}">
           <label class="banner-adm__caja">
             ${b.img ? `<img src="${esc(b.img)}" alt="">` : `<span>Banner ${i + 1}<br>Toca para subir</span>`}
             <input type="file" accept="image/jpeg,image/png,image/webp" data-banner="${i}">
@@ -738,17 +756,28 @@
             <input data-alt="${i}" value="${esc(b.alt || '')}" placeholder="Descripción para accesibilidad" maxlength="120">
             <input data-url="${i}" value="${esc(b.url || '')}" placeholder="Enlace al tocar (opcional): #catalogo" maxlength="200">
           </div>
-          <button class="banner-adm__x" data-quitar="${i}" aria-label="Quitar banner ${i + 1}">✕</button>
+          <button class="banner-adm__x" data-quitar="${i}" aria-label="Quitar el banner ${i + 1} del ${titulo.toLowerCase()}">✕</button>
         </div>`);
-        }
-        if ($('#bannersAdm')) $('#bannersAdm').innerHTML = filas.join('');
+            }
+            return `<div class="banner-grupo" data-g="${g}">
+                      <h3 class="banner-grupo__h">${titulo}</h3>
+                      <p class="banner-grupo__p">${nota}</p>
+                      ${filas.join('')}
+                    </div>`;
+        }).join('');
     }
 
+    /* El carrusel al que pertenece una fila se lee del contenedor: así
+       el índice de la ranura sigue siendo 0-4 en los dos. */
+    const grupoDe = (el) => (el.closest('[data-g]')?.dataset.g === '2' ? 2 : 1);
+
     $('#bannersAdm')?.addEventListener('change', async (e) => {
+        const g = grupoDe(e.target);
         const inp = e.target.closest('[data-banner]');
         if (inp && inp.files[0]) {
             const i = +inp.dataset.banner;
             const fd = new FormData();
+            fd.append('grupo', g);
             fd.append('indice', i);
             fd.append('archivo', inp.files[0]);
             try {
@@ -757,23 +786,23 @@
                 });
                 const d = await r.json().catch(() => ({}));
                 if (!r.ok) { toast(d.error || 'No se pudo subir el banner.', false); return; }
-                banners[i] = { ...(banners[i] || {}), img: d.url };
+                banners[g][i] = { ...(banners[g][i] || {}), img: d.url, g };
                 pintarBanners();
                 toast('Banner subido. Recuerda guardar.', false);
             } catch (_) { toast('Sin conexión. Intenta de nuevo.', false); }
             return;
         }
         const alt = e.target.closest('[data-alt]');
-        if (alt) { const i = +alt.dataset.alt; if (banners[i]) banners[i].alt = alt.value; }
+        if (alt) { const i = +alt.dataset.alt; if (banners[g][i]) banners[g][i].alt = alt.value; }
         const url = e.target.closest('[data-url]');
-        if (url) { const i = +url.dataset.url; if (banners[i]) banners[i].url = url.value; }
+        if (url) { const i = +url.dataset.url; if (banners[g][i]) banners[g][i].url = url.value; }
     });
 
     $('#bannersAdm')?.addEventListener('click', (e) => {
         const x = e.target.closest('[data-quitar]'); if (!x) return;
-        const i = +x.dataset.quitar;
-        if (!banners[i]?.img) return;
-        banners.splice(i, 1);   // los siguientes suben una posición
+        const g = grupoDe(x), i = +x.dataset.quitar;
+        if (!banners[g][i]?.img) return;
+        banners[g].splice(i, 1);   // los siguientes suben una posición
         pintarBanners();
         toast('Banner quitado. Recuerda guardar.', false);
     });
@@ -783,10 +812,12 @@
         const txt = btn.textContent;
         btn.disabled = true; btn.textContent = 'Guardando…';
         try {
+            const carga = CARRUSELES.flatMap(([g]) =>
+                banners[g].filter((b) => b.img).map((b) => ({ ...b, g })));
             const r = await fetch('/panel?handler=Banners', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': token() },
-                body: JSON.stringify(banners.filter((b) => b.img))
+                body: JSON.stringify(carga)
             });
             const d = await r.json().catch(() => ({}));
             toast(r.ok ? 'Banners publicados' : (d.error || 'No se pudo guardar.'), false);

@@ -16,23 +16,48 @@
         ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
     const LS = 'boleto:borrador';
-    const BASE = PRODUCTOS.map((p) => ({ ...p }));   // catálogo publicado (mutable al publicar)
+
+    /* PRODUCTOS es el catálogo tal como sale a la web, y ahí la
+       composición del combo llega ya filtrada: lo que está apagado viaja
+       vacío. Para poder editarla hace falta el dato crudo, que está en
+       TODOS —el payload del panel—. Se fusionan por id. */
+    const CRUDO = Object.fromEntries((typeof TODOS !== 'undefined' ? TODOS : [])
+        .map((p) => [p.id, p]));
+
+    const conCombo = (p) => {
+        const t = CRUDO[p.id] || {};
+        return {
+            ...p,
+            aco: t.aco ?? '', acoP: +(t.acoP ?? 0), acoOn: !!t.acoOn,
+            hie: t.hie ?? '', hieP: +(t.hieP ?? 0), hieOn: !!t.hieOn
+        };
+    };
+
+    const BASE = PRODUCTOS.map(conCombo);            // catálogo publicado (mutable al publicar)
     let draft = BASE.map((p) => ({ ...p }));         // catálogo en edición
     let grupo = 'Todo', busca = '', soloCambiados = false;
     let ultimo = null, toastT = null;
 
+    /* Los campos del combo que se editan en esta pestaña. Tenerlos en una
+       lista evita el clásico: agregar un campo, olvidarlo en `cambiado` y
+       que el borrador se pierda al recargar sin que nadie lo note. */
+    const CAMPOS = ['p', 'combo', 'stock', 'aco', 'acoP', 'acoOn', 'hie', 'hieP', 'hieOn'];
+
     const base = (id) => BASE.find((p) => p.id === id);
     const cambiado = (p) => {
         const b = base(p.id);
-        return b.p !== p.p || b.combo !== p.combo || b.stock !== p.stock;
+        return CAMPOS.some((k) => b[k] !== p[k]);
     };
     const cambios = () => draft.filter(cambiado);
 
     /* ── Borrador ────────────────────────────────────────────── */
     function guardar() {
         try {
-            localStorage.setItem(LS, JSON.stringify(
-                cambios().map((p) => ({ id: p.id, p: p.p, combo: p.combo, stock: p.stock }))));
+            localStorage.setItem(LS, JSON.stringify(cambios().map((p) => {
+                const o = { id: p.id };
+                CAMPOS.forEach((k) => { o[k] = p[k]; });
+                return o;
+            })));
         } catch (_) { }
     }
     function recuperar() {
@@ -42,7 +67,7 @@
             JSON.parse(raw).forEach((c) => {
                 const p = draft.find((x) => x.id === c.id);
                 if (!p) return;
-                p.p = c.p; p.combo = c.combo; p.stock = c.stock;
+                CAMPOS.forEach((k) => { if (c[k] !== undefined) p[k] = c[k]; });
             });
         } catch (_) { }
     }
@@ -114,13 +139,129 @@
           <button data-stock="${p.id}" aria-pressed="${p.stock}"
                   aria-label="${p.stock ? 'Hay stock' : 'Agotado'} de ${esc(p.n)}"></button>
         </div>
+        ${p.combo != null ? filaCombo(p) : ''}
       </div>`;
         }).join('');
 
         etiquetasMasivo();
     }
 
+    /* ══════════════════════════════════════════════════════════
+       Composición del combo
+
+       Va como una segunda línea dentro de la fila y no como dos
+       columnas más: son seis controles nuevos por producto y el panel
+       se usa desde el celular, en la tienda. En columnas no entran; en
+       línea aparte se leen igual en el teléfono y en el escritorio.
+
+       Solo sale en productos que tienen combo. Sin precio de combo no
+       hay nada que componer, igual que el campo de precio de combo ya
+       venía deshabilitado.
+       ══════════════════════════════════════════════════════════ */
+    function filaCombo(p) {
+        const parte = (clave, etiqueta, marcador) => {
+            const on = p[clave + 'On'];
+            return `
+        <div class="adit" data-on="${on}">
+          <label class="adit__sw">
+            <input type="checkbox" data-on="${clave}" data-id="${p.id}" ${on ? 'checked' : ''}>
+            <span>${etiqueta}</span>
+          </label>
+          <input class="adit__n" type="text" data-nom="${clave}" data-id="${p.id}"
+                 value="${esc(p[clave] || '')}" placeholder="${marcador}" maxlength="60"
+                 aria-label="Qué ${etiqueta.toLowerCase()} lleva el combo de ${esc(p.n)}">
+          <input class="adit__p" type="number" data-pre="${clave}" data-id="${p.id}"
+                 value="${(+p[clave + 'P'] || 0).toFixed(2)}" step="0.10" min="0" inputmode="decimal"
+                 aria-label="Precio suelto del ${etiqueta.toLowerCase()} de ${esc(p.n)}">
+        </div>`;
+        };
+
+        return `
+      <div class="combo">
+        <p class="combo__t">El combo incluye <small>— el precio de cada parte no
+          se publica: sirve para saber qué estás regalando</small></p>
+        ${parte('aco', 'Aditivo', 'Gaseosa, ginger, energizante…')}
+        ${parte('hie', 'Hielo', 'Hielo 3 kg')}
+        <p class="combo__suma" data-suma="${p.id}">${suma(p)}</p>
+      </div>`;
+    }
+
+    /* Comparar el combo con lo que costaría por partes es la razón de que
+       los precios estén acá. El panel no decide el precio: lo pone al
+       lado para que el dueño vea si le cierra. */
+    function suma(p) {
+        const partes = [`botella ${money(p.p)}`];
+        let t = p.p;
+        if (p.acoOn) { t += +p.acoP || 0; partes.push(`aditivo ${money(+p.acoP || 0)}`); }
+        if (p.hieOn) { t += +p.hieP || 0; partes.push(`hielo ${money(+p.hieP || 0)}`); }
+        if (partes.length === 1) return 'El combo no lleva nada marcado todavía.';
+        const dif = (p.combo ?? 0) - t;
+        const cierre = Math.abs(dif) < 0.005
+            ? 'igual que el combo'
+            : dif < 0 ? `el combo cobra ${money(-dif)} menos` : `el combo cobra ${money(dif)} más`;
+        return `${partes.join(' + ')} = ${money(t)} · ${cierre}`;
+    }
+
+    function refrescarSuma(id) {
+        const p = draft.find((x) => x.id === id);
+        const el = $(`[data-suma="${id}"]`);
+        if (p && el) el.textContent = suma(p);
+    }
+
+    /* El nombre del aditivo y del hielo se puede editar en dos sitios: acá
+       y en el editor de producto. Cuando el editor guarda, esta pestaña
+       adopta el nombre nuevo — salvo que acá hubiera un cambio sin
+       publicar, que no se pisa. */
+    function sincronizarCombo(id, aco, hie) {
+        const b = base(id), d = draft.find((x) => x.id === id);
+        if (!b || !d) return;
+        if (d.aco === b.aco) d.aco = aco;
+        if (d.hie === b.hie) d.hie = hie;
+        b.aco = aco; b.hie = hie;
+        pintar(); refrescar();
+    }
+
     /* ── Edición ─────────────────────────────────────────────── */
+    /* Nombre y precio de las partes del combo. Van antes que el manejador
+       de precios porque comparten el evento y estos traen data-id. */
+    $('#tabla').addEventListener('input', (e) => {
+        const el = e.target;
+        const clave = el.dataset.nom || el.dataset.pre;
+        if (!clave) return;
+        const p = draft.find((x) => x.id === el.dataset.id);
+        if (!p) return;
+
+        if (el.dataset.nom) {
+            p[clave] = el.value;
+            /* Marcado pero sin nombre es un combo que anuncia algo que no
+               dice cuál. Se señala acá y el servidor lo vuelve a revisar. */
+            el.classList.toggle('mal', p[clave + 'On'] && !el.value.trim());
+        } else {
+            const v = parseFloat(el.value);
+            if (el.value === '' || isNaN(v) || v < 0) { el.classList.add('mal'); return; }
+            el.classList.remove('mal');
+            p[clave + 'P'] = v;
+        }
+        refrescarSuma(p.id);
+        marcarFila(p.id);
+        refrescar();
+    });
+
+    $('#tabla').addEventListener('change', (e) => {
+        const el = e.target;
+        if (el.type !== 'checkbox' || !el.dataset.on) return;
+        const clave = el.dataset.on;
+        const p = draft.find((x) => x.id === el.dataset.id);
+        if (!p) return;
+        p[clave + 'On'] = el.checked;
+        el.closest('.adit').dataset.on = el.checked;
+        const nom = $(`[data-nom="${clave}"][data-id="${p.id}"]`);
+        if (nom) nom.classList.toggle('mal', el.checked && !nom.value.trim());
+        refrescarSuma(p.id);
+        marcarFila(p.id);
+        refrescar();
+    });
+
     $('#tabla').addEventListener('input', (e) => {
         const el = e.target;
         const id = el.dataset.precio || el.dataset.combo;
@@ -133,6 +274,7 @@
         el.classList.remove('mal');
 
         if (el.dataset.precio) p.p = v; else p.combo = v;
+        refrescarSuma(id);   // la suma arranca en el precio de la botella
 
         /* Prevención de errores: el combo no puede costar menos que la botella */
         if (p.combo != null && p.combo <= p.p) {
@@ -238,6 +380,19 @@
             if (b.p !== p.p) partes.push(`botella <s>${money(b.p)}</s> → <i>${money(p.p)}</i>`);
             if (b.combo !== p.combo && p.combo != null) partes.push(`combo <s>${money(b.combo)}</s> → <i>${money(p.combo)}</i>`);
             if (b.stock !== p.stock) partes.push(p.stock ? '<i>vuelve a haber stock</i>' : '<i>agotado</i>');
+
+            /* El desglose del combo también se resume: publicar a ciegas un
+               cambio que el cliente va a ver en su mensaje de WhatsApp es
+               justo lo que este resumen existe para evitar. */
+            [['aco', 'aditivo'], ['hie', 'hielo']].forEach(([k, et]) => {
+                if (b[k + 'On'] !== p[k + 'On'])
+                    partes.push(p[k + 'On'] ? `<i>el combo lleva ${et}</i>` : `<i>el combo ya no lleva ${et}</i>`);
+                if (b[k] !== p[k])
+                    partes.push(`${et} <s>${esc(b[k] || '—')}</s> → <i>${esc(p[k] || '—')}</i>`);
+                if (b[k + 'P'] !== p[k + 'P'])
+                    partes.push(`precio del ${et} <s>${money(+b[k + 'P'] || 0)}</s> → <i>${money(+p[k + 'P'] || 0)}</i>`);
+            });
+
             return `<div><b>${esc(p.n)}</b> — ${partes.join(' · ')}</div>`;
         }).join('');
 
@@ -260,6 +415,15 @@
             return;
         }
 
+        /* Marcado pero sin nombre: el combo anunciaría que incluye algo sin
+           decir qué, y eso llega al mensaje de WhatsApp del cliente. */
+        const sinNombre = cs.filter((p) =>
+            (p.acoOn && !String(p.aco || '').trim()) || (p.hieOn && !String(p.hie || '').trim()));
+        if (sinNombre.length) {
+            toast(`Ponle nombre al aditivo o al hielo de ${sinNombre[0].n}, o desmarca la casilla`, false);
+            return;
+        }
+
         /* Nielsen #1 · el sistema dice qué está haciendo.
            Sin esto el dueño toca dos veces creyendo que no pasó nada. */
         const btn = $('#publicar');
@@ -272,7 +436,9 @@
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': token() },
                 body: JSON.stringify(cs.map((p) => ({
-                    id: p.id, precio: p.p, precioCombo: p.combo, stock: p.stock
+                    id: p.id, precio: p.p, precioCombo: p.combo, stock: p.stock,
+                    aditivo: p.aco ?? '', aditivoPrecio: +p.acoP || 0, aditivoEnCombo: !!p.acoOn,
+                    hielo: p.hie ?? '', hieloPrecio: +p.hieP || 0, hieloEnCombo: !!p.hieOn
                 })))
             });
 
@@ -674,6 +840,11 @@
                     aco: cuerpo.comboAcompanante, hie: cuerpo.comboHielo,
                     promo: cuerpo.promo, orden: cuerpo.orden
                 });
+                /* La pestaña de precios guarda su propia copia del combo.
+                   Sin esto seguiría mostrando el nombre viejo y al
+                   publicar lo devolvería, pisando lo que se acaba de
+                   guardar acá. */
+                sincronizarCombo(editando, cuerpo.comboAcompanante, cuerpo.comboHielo);
                 toast('Producto actualizado y publicado', false);
             } else {
                 TODOS.push({

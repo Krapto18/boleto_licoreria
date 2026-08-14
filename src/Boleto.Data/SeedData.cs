@@ -37,6 +37,13 @@ public static class SeedData
         if (string.IsNullOrWhiteSpace(tienda.Zonas))
             tienda.Zonas = string.Join('\n', DistritosLima.Select(d => $"{d}|10|"));
 
+        /* Banners de arranque: son piezas del propio cliente, recortadas
+           de sus artes de Instagram. No son de relleno, pero sí tienen
+           precios de un momento dado — el dueño los reemplaza desde el
+           panel. Igual que las zonas, solo se siembran si está vacío. */
+        if (string.IsNullOrWhiteSpace(tienda.Banners))
+            tienda.Banners = string.Join('\n', BannersIniciales);
+
         await db.SaveChangesAsync(ct);
 
         var existentes = await db.Productos.Select(p => p.Id).ToListAsync(ct);
@@ -60,6 +67,19 @@ public static class SeedData
                     string.Join("; ", r.Errors.Select(e => e.Description)));
         }
     }
+
+    /// <summary>
+    /// Formato: ruta|texto alternativo|enlace|carrusel.
+    /// Dos arriba y dos abajo: con uno solo el carrusel no muestra puntos
+    /// ni se puede deslizar, y no se vería que la pista funciona.
+    /// </summary>
+    private static readonly string[] BannersIniciales =
+    [
+        "/assets/banners/jack-daniels.webp|Jack Daniels 700 ml a S/ 111.90, o S/ 124.90 con hielo de 3 kg. Coca Cola 1.5 L gratis|#catalogo|1",
+        "/assets/banners/barcelo.webp|Barceló Ron Gran Añejo 1.7 L a S/ 118.90, o S/ 126.90 con hielo de 3 kg. Coca Cola 1.5 L gratis|#catalogo|1",
+        "/assets/banners/old-parr.webp|Old Parr 12 años 750 ml con hielo de 3 kg y Coca Cola 1.5 L a S/ 99.90|#catalogo|2",
+        "/assets/banners/don-julio.webp|Don Julio Tequila Blanco 750 ml a S/ 118.90|#catalogo|2"
+    ];
 
     /// <summary>
     /// Los 43 distritos de la provincia de Lima. No incluye el Callao:

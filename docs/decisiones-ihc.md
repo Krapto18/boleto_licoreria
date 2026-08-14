@@ -673,7 +673,7 @@ reserva su espacio antes de cargar, así el resto del hero no salta.
 
 ## 36. Qué se verifica solo de todo esto
 
-28 comprobaciones nuevas en `tests/flujo-pedido.js`, sobre las 40 que ya había:
+33 comprobaciones nuevas en `tests/flujo-pedido.js`, sobre las 40 que ya había:
 
 - El sello ya no está y el buscador ocupa su lugar
 - Escribir en el nav filtra la grilla y el otro campo repite el texto; borrar en
@@ -690,6 +690,8 @@ reserva su espacio antes de cargar, así el resto del hero no salta.
   y el enlace "Catálogo" salta por encima de los dos
 - Ninguna pieza de marca queda rota, el isotipo está en el nav y en el pie, los
   tres iconos están y cada uno recorta su silueta con la máscara del SVG
+- El mensaje de WhatsApp detalla de qué está compuesto el combo, y lo que el
+  panel desmarcó no viaja al navegador
 
 Los carruseles se prueban **inyectando banners en la respuesta**, porque la base
 todavía no tiene ninguno cargado. Sin eso, la función quedaría sin probar hasta
@@ -742,3 +744,67 @@ es una variable.
 antes de mirar la red: sin subir la versión, quien ya había entrado seguiría
 viendo el logo viejo hasta vaciar el navegador. Es el tipo de detalle que no
 falla en desarrollo —donde nadie tiene caché— y falla para todos los demás.
+
+## 38. El combo dice de qué está hecho
+
+Lo pedido: que la pestaña de precios permita definir el **aditivo** —gaseosa,
+ginger, cualquier acompañante— y el **hielo** que componen el combo, cada uno con
+su precio y una casilla de si va o no va.
+
+**Va como segunda línea de la fila, no como dos columnas.** Son seis controles
+nuevos por producto. El panel se usa desde el celular, en la tienda: en columnas
+no entran, y en un teléfono de 390 px el nombre "Coca Cola 1.5 L" no cabe al lado
+de la casilla y del precio. En línea aparte se lee igual en el teléfono y en el
+escritorio. Solo aparece en los productos que tienen combo, igual que el campo de
+precio de combo ya venía deshabilitado sin él.
+
+**Apagar no borra.** La casilla saca el ítem del combo pero conserva el nombre y
+el precio. Cuando se acaba la gaseosa se desmarca; cuando llega, se vuelve a
+marcar sin tener que escribir nada. Un borrado obligaría a recordar qué decía.
+
+**El precio de cada parte no se publica.** No aparece en la web ni en el mensaje:
+sirve para que el dueño vea, al lado del campo del combo, la cuenta
+`botella + aditivo + hielo = S/ X · el combo cobra S/ Y menos`. Es la pregunta que
+se hace al fijar un combo —cuánto estoy regalando— y hasta ahora la tenía que
+hacer de memoria. El panel no decide el precio: pone el dato al lado.
+
+**Lo apagado no viaja al navegador.** El catálogo público manda el nombre vacío en
+vez de mandarlo y esconderlo con JavaScript. Es una página pública: lo que no se
+muestra tampoco tiene que estar en su HTML, y la web no debería decidir algo que
+ya está decidido en el panel.
+
+**Marcado sin nombre se bloquea.** Un combo que anuncia que incluye algo sin decir
+qué termina en el mensaje de WhatsApp del cliente. Se señala en el campo, se
+impide publicar, y el servidor lo vuelve a revisar — el navegador no es la
+autoridad.
+
+**El mismo error de `ProductoActivo`, otra vez a punto de pasar.** La migración
+crea los dos flags con `defaultValue: false`, y ese es exactamente el valor que
+habría apagado el aditivo y el hielo de los **18 combos que ya existen**: el
+cliente dejaría de ver qué incluye el suyo y nadie se enteraría hasta compararlo
+con el catálogo impreso. La migración los enciende donde ya había un nombre
+guardado, que es lo que la web venía mostrando. El precio se queda en 0, que es
+un dato nuevo que solo el dueño puede saber.
+
+**El nombre se puede editar en dos sitios** —acá y en el editor de producto— así
+que al guardar en el editor, la pestaña de precios adopta el nombre nuevo. Sin
+eso seguiría mostrando el viejo y al publicar lo devolvería, pisando en silencio
+lo que se acababa de guardar.
+
+## 39. Banners de arranque
+
+Los carruseles estaban vacíos: la función existía y no se veía funcionar. Se
+cargaron cuatro piezas del propio cliente —sus artes de Instagram— dos arriba y
+dos abajo. Dos y no una por carrusel porque con un solo banner no hay puntos ni
+deslizamiento, y no se vería que la pista funciona.
+
+**Las piezas son 4:5 y el banner es apaisado.** Se recortaron a 4:3, que es lo más
+apaisado que admiten sin cortarles el bloque de precio, con el desplazamiento
+vertical ajustado pieza por pieza porque cada una lo coloca a otra altura. La
+recomendación del panel pasó de 1200×500 a 1200×900 para que coincida con lo que
+ya está cargado: dentro de un mismo carrusel, un tamaño distinto hace saltar la
+pista.
+
+**Se siembran solo si la tabla está vacía**, igual que las zonas de reparto. Son
+artes del cliente, no relleno, pero llevan precios de un momento dado: el dueño
+los reemplaza desde el panel y el seed no vuelve a tocarlos.

@@ -52,7 +52,11 @@ public class IndexModel(CatalogoService svc, IAlmacen almacen, ILogger<IndexMode
             p = p.Precio,
             combo = p.PrecioCombo,
             aco = p.ComboAcompanante,
+            acoP = p.ComboAcompanantePrecio,
+            acoOn = p.ComboAcompananteActivo,
             hie = p.ComboHielo,
+            hieP = p.ComboHieloPrecio,
+            hieOn = p.ComboHieloActivo,
             promo = p.Promo,
             stock = p.Stock,
             activo = p.Activo,
@@ -142,6 +146,11 @@ public class IndexModel(CatalogoService svc, IAlmacen almacen, ILogger<IndexMode
                 PrecioCombo = d.PrecioCombo,
                 ComboAcompanante = d.ComboAcompanante ?? "",
                 ComboHielo = d.ComboHielo ?? "",
+                /* Si el alta trae nombre, va incluido: nadie escribe el
+                   acompañante de un combo para dejarlo apagado. El precio
+                   se pone después, en la pestaña de precios. */
+                ComboAcompananteActivo = !string.IsNullOrWhiteSpace(d.ComboAcompanante),
+                ComboHieloActivo = !string.IsNullOrWhiteSpace(d.ComboHielo),
                 Promo = d.Promo,
                 Stock = true,
                 Color = string.IsNullOrWhiteSpace(d.Color) ? "#8A8A8A" : d.Color

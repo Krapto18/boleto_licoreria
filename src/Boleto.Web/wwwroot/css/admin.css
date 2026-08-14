@@ -390,6 +390,115 @@ a {
         font-variant-numeric: tabular-nums
     }
 
+/* ══════════════════════════════════════════════════════════════
+   COMPOSICIÓN DEL COMBO
+   Segunda línea de la fila, a lo ancho. En columnas no entra: son
+   seis controles más por producto y esto se usa desde el celular.
+   ══════════════════════════════════════════════════════════════ */
+.combo {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 4px;
+    padding-top: 12px;
+    border-top: 1px dashed var(--marino-3)
+}
+
+.combo__t {
+    font-size: .68rem;
+    font-weight: 600;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--tx-tenue)
+}
+
+    .combo__t small {
+        font-weight: 400;
+        letter-spacing: 0;
+        text-transform: none
+    }
+
+.combo__suma {
+    font-size: .74rem;
+    color: var(--tx-tenue);
+    font-variant-numeric: tabular-nums
+}
+
+/* Una parte del combo: si va, cuál es y cuánto cuesta suelta. */
+.adit {
+    display: grid;
+    grid-template-columns: auto 1fr 104px;
+    gap: 10px;
+    align-items: center
+}
+
+    /* Apagado sigue leyéndose, pero sin pedir atención: el dato no se
+       borró, solo no entra en el combo. */
+    .adit[data-on="false"] .adit__n,
+    .adit[data-on="false"] .adit__p {
+        opacity: .5
+    }
+
+.adit__sw {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 44px;
+    min-width: 108px;
+    font-size: .84rem;
+    cursor: pointer
+}
+
+    .adit__sw input {
+        width: 22px;
+        height: 22px;
+        accent-color: var(--ambar);
+        flex-shrink: 0;
+        cursor: pointer
+    }
+
+.adit input[type="text"],
+.adit input[type="number"] {
+    min-height: 44px;
+    width: 100%;
+    background: var(--marino);
+    border: 1px solid var(--marino-3);
+    border-radius: 9px;
+    padding: 8px 11px;
+    color: var(--tx-claro);
+    font-size: .9rem
+}
+
+.adit input[type="number"] {
+    font-weight: 600;
+    text-align: right;
+    font-variant-numeric: tabular-nums
+}
+
+.adit input:focus {
+    outline: none;
+    border-color: var(--ambar)
+}
+
+.adit input.mal {
+    border-color: var(--rojo);
+    background: rgba(207,32,38,.12)
+}
+
+@media(max-width:620px) {
+    /* En el teléfono el nombre necesita el ancho entero: "Coca Cola
+       1.5 L" no entra al lado de la casilla y del precio. */
+    .adit {
+        grid-template-columns: 1fr 104px
+    }
+
+    .adit__sw {
+        grid-column: 1 / -1;
+        min-height: 32px
+    }
+}
+
 .sw {
     display: flex;
     flex-direction: column;

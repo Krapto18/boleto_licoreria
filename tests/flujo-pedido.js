@@ -613,6 +613,70 @@ async function carruseles(browser) {
   await ctx.close();
 }
 
+/* ══════════════════════════════════════════════════════════════
+   El combo dice qué incluye
+
+   Un combo es la botella más un aditivo y/o hielo, y qué lleva cada
+   uno se decide con una casilla en el panel. Lo que se comprueba acá
+   es la punta visible de esa cadena: que lo marcado llegue al mensaje
+   de WhatsApp, que es donde el cliente y la tienda se ponen de
+   acuerdo. Lo desmarcado no debe aparecer — ni siquiera en el HTML.
+   ══════════════════════════════════════════════════════════════ */
+async function combos(browser) {
+  console.log('\n=== COMBOS ===');
+
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  const p = await ctx.newPage();
+  await p.goto(URL, { waitUntil: 'networkidle' });
+  if (await p.locator('#edadSi').isVisible().catch(() => false)) await p.click('#edadSi');
+  await p.waitForTimeout(300);
+
+  const conCombo = await p.evaluate(() =>
+    PRODUCTOS.filter((x) => x.combo != null && x.stock !== false)
+             .map((x) => ({ id: x.id, n: x.n, aco: x.aco, hie: x.hie })));
+
+  if (!conCombo.length) {
+    ok(false, 'hay al menos un producto con combo en el catálogo');
+    await ctx.close();
+    return;
+  }
+  ok(true, `${conCombo.length} productos con combo en el catálogo`);
+
+  const conPartes = conCombo.find((x) => x.aco || x.hie);
+  ok(!!conPartes,
+     'algún combo dice de qué está compuesto' +
+     (conPartes ? ` (${conPartes.n}: ${[conPartes.aco, conPartes.hie].filter(Boolean).join(' + ')})` : ''));
+  if (!conPartes) { await ctx.close(); return; }
+
+  await p.click(`.card [data-set="combo"][data-id="${conPartes.id}"]`);
+  await p.waitForTimeout(200);
+  await p.click(`.card [data-add="${conPartes.id}"], .card [data-id="${conPartes.id}"] ~ * .add`)
+    .catch(async () => {
+      // El botón de agregar no siempre lleva el id: se busca por la tarjeta.
+      await p.evaluate((id) => {
+        const seg = document.querySelector(`[data-set="combo"][data-id="${id}"]`);
+        seg.closest('.card').querySelector('.add').click();
+      }, conPartes.id);
+    });
+  await p.waitForTimeout(600);
+
+  const msg = decodeURIComponent(await p.getAttribute('#barWa', 'href'));
+  for (const parte of [conPartes.aco, conPartes.hie].filter(Boolean)) {
+    ok(msg.includes(parte),
+       `el mensaje detalla que el combo lleva "${parte}"`);
+  }
+
+  /* Lo que el panel desmarcó no viaja al navegador: no basta con no
+     pintarlo, no puede estar en el HTML de una página pública. */
+  const apagados = await p.evaluate(() =>
+    PRODUCTOS.filter((x) => x.combo != null && !x.aco && !x.hie).length);
+  const html = await p.content();
+  ok(!/"aco":null|"hie":null/.test(html),
+     `los combos sin composición viajan vacíos, no como nulos (${apagados} así)`);
+
+  await ctx.close();
+}
+
 (async () => {
   const browser = await abrirNavegador();
   try {
@@ -620,6 +684,7 @@ async function carruseles(browser) {
     await accesibilidad(browser);
     await navegacion(browser);
     await carruseles(browser);
+    await combos(browser);
   } finally {
     await browser.close();
   }

@@ -196,7 +196,10 @@ aparecería en el total del cliente.
 Cuatro cambios pedidos por el dueño. Están hechos y documentados con lo que
 cuesta cada uno en `docs/decisiones-ihc.md`, nivel 6.
 
-**Dos carruseles de cinco banners**, uno debajo del otro. Cuesta scroll: los diez
+**Dos carruseles de cinco banners**, uno debajo del otro. Vienen con cuatro
+piezas del propio cliente —sus artes de Instagram, recortadas a 4:3— sembradas
+solo si la tabla está vacía, igual que las zonas. El dueño las reemplaza desde el
+panel. Cuesta scroll: los diez
 llenos meten 380 px entre el hero y el catálogo en un móvil de 390. Se amortigua
 con carga diferida de los nueve banners que no son el primero y con el enlace
 "Catálogo" del menú, que salta por encima de los dos. El panel los muestra como
@@ -265,6 +268,28 @@ pidió — está a un cambio de variable si el cliente lo prefiere.
 
 **El service worker subió a `boleto-v2`.** Sin subir la versión, quien ya visitó
 el sitio seguiría viendo el logo anterior desde su caché.
+
+## El combo y de qué está hecho
+
+Un combo es la botella más un **aditivo** —gaseosa, ginger, cualquier
+acompañante— y/o **hielo**. La pestaña de precios define los dos: qué es, cuánto
+costaría suelto y una casilla de si va incluido.
+
+- **Apagar no borra.** Se acaba la gaseosa, se desmarca; cuando llega, se vuelve
+  a marcar. El nombre y el precio se conservan.
+- **El precio de cada parte no se publica.** Sirve para la cuenta que el panel
+  muestra al lado: `botella + aditivo + hielo = S/ X · el combo cobra S/ Y menos`.
+  Es lo que el dueño necesita saber al fijar un combo.
+- **Lo apagado no viaja al navegador.** El catálogo manda el nombre vacío en vez
+  de mandarlo y esconderlo con JavaScript.
+- **Marcado sin nombre no se publica.** Un combo que anuncia algo sin decir qué
+  termina en el mensaje de WhatsApp del cliente. Lo revisan el panel y el
+  servidor.
+
+La migración `ComboAditivoHielo` **enciende las casillas donde ya había un
+nombre**. Con el `defaultValue: false` que EF genera solo, los 18 combos que ya
+existen habrían dejado de decir qué incluyen sin que nadie se enterara — el mismo
+error que casi se cuela con `ProductoActivo`.
 
 ## Seguridad del panel
 

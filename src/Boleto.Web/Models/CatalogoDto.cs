@@ -64,5 +64,15 @@ public record BannerDto
 
 public record CatalogoDto(ConfigDto Config, string[] Grupos, ProductoDto[] Productos);
 
-/// <summary>Lo que el panel manda al publicar.</summary>
-public record CambioDto(string Id, decimal Precio, decimal? PrecioCombo, bool Stock);
+/// <summary>
+/// Lo que el panel manda al publicar.
+///
+/// Los campos del combo son opcionales y <c>null</c> significa "no lo
+/// toques": así un cliente viejo —una pestaña abierta desde antes del
+/// cambio— publica un precio sin borrar de paso la composición del
+/// combo, que él no sabe que existe.
+/// </summary>
+public record CambioDto(
+    string Id, decimal Precio, decimal? PrecioCombo, bool Stock,
+    string? Aditivo = null, decimal? AditivoPrecio = null, bool? AditivoEnCombo = null,
+    string? Hielo = null, decimal? HieloPrecio = null, bool? HieloEnCombo = null);

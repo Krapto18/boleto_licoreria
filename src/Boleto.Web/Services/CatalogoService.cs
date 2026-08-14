@@ -50,8 +50,12 @@ public class CatalogoService(
                 G = p.Grupo,
                 P = p.Precio,
                 Combo = p.PrecioCombo,
-                Acompanante = p.ComboAcompanante,
-                Hielo = p.ComboHielo,
+                /* Lo apagado no viaja al navegador. Mandarlo y ocultarlo
+                   con JavaScript dejaría el dato en el HTML de una página
+                   pública, y además la web tendría que decidir algo que
+                   ya está decidido en el panel. */
+                Acompanante = p.ComboAcompananteActivo ? p.ComboAcompanante : "",
+                Hielo = p.ComboHieloActivo ? p.ComboHielo : "",
                 Promo = p.Promo,
                 Stock = p.Stock,
                 Col = p.Color,
@@ -461,6 +465,59 @@ public class CatalogoService(
                 p.Stock = c.Stock;
                 cambio = true;
             }
+
+            /* ── Composición del combo ────────────────────────────
+               Se aplica campo por campo y solo si vino: null es "no lo
+               toques". El nombre se limpia de saltos de línea porque
+               termina dentro del mensaje de WhatsApp. */
+            static string Limpio(string s) =>
+                s.Replace('\n', ' ').Replace('\r', ' ').Trim();
+
+            void Componer(
+                string etiqueta, string? nombre, decimal? precio, bool? enCombo,
+                Func<string> leerNombre, Action<string> ponerNombre,
+                Func<decimal> leerPrecio, Action<decimal> ponerPrecio,
+                Func<bool> leerOn, Action<bool> ponerOn)
+            {
+                if (precio is < 0)
+                    throw new InvalidOperationException(
+                        $"El precio del {etiqueta} de {p.Nombre} no puede ser negativo.");
+
+                var nom = nombre is null ? leerNombre() : Limpio(nombre);
+                if (nom.Length > 60) nom = nom[..60];
+
+                // Un combo no puede anunciar que incluye algo sin nombre.
+                if (enCombo == true && nom.Length == 0)
+                    throw new InvalidOperationException(
+                        $"Marcaste que el combo de {p.Nombre} lleva {etiqueta}, " +
+                        "pero no dice cuál. Escribe el nombre o desmarca la casilla.");
+
+                if (nombre is not null && leerNombre() != nom)
+                {
+                    Auditar($"Combo{etiqueta}", leerNombre(), nom);
+                    ponerNombre(nom); cambio = true;
+                }
+                if (precio is { } pr && leerPrecio() != pr)
+                {
+                    Auditar($"Combo{etiqueta}Precio", leerPrecio().ToString("0.00"), pr.ToString("0.00"));
+                    ponerPrecio(pr); cambio = true;
+                }
+                if (enCombo is { } on && leerOn() != on)
+                {
+                    Auditar($"Combo{etiqueta}Activo", leerOn() ? "sí" : "no", on ? "sí" : "no");
+                    ponerOn(on); cambio = true;
+                }
+            }
+
+            Componer("Aditivo", c.Aditivo, c.AditivoPrecio, c.AditivoEnCombo,
+                     () => p.ComboAcompanante, v => p.ComboAcompanante = v,
+                     () => p.ComboAcompanantePrecio, v => p.ComboAcompanantePrecio = v,
+                     () => p.ComboAcompananteActivo, v => p.ComboAcompananteActivo = v);
+
+            Componer("Hielo", c.Hielo, c.HieloPrecio, c.HieloEnCombo,
+                     () => p.ComboHielo, v => p.ComboHielo = v,
+                     () => p.ComboHieloPrecio, v => p.ComboHieloPrecio = v,
+                     () => p.ComboHieloActivo, v => p.ComboHieloActivo = v);
 
             if (cambio)
             {

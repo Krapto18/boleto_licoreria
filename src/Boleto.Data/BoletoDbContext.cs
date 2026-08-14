@@ -23,6 +23,8 @@ public class BoletoDbContext(DbContextOptions<BoletoDbContext> options)
             e.Property(p => p.Id).ValueGeneratedNever();
             e.Property(p => p.Precio).HasPrecision(10, 2);
             e.Property(p => p.PrecioCombo).HasPrecision(10, 2);
+            e.Property(p => p.ComboAcompanantePrecio).HasPrecision(10, 2);
+            e.Property(p => p.ComboHieloPrecio).HasPrecision(10, 2);
             e.HasIndex(p => p.Grupo);
             e.HasIndex(p => new { p.Stock, p.Orden });
         });

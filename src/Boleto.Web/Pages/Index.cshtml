@@ -12,7 +12,7 @@
 <meta property="og:description" content="A la hora que sea. Tienda y WhatsApp abiertos 24/7.">
 <meta property="og:type" content="website">
 <meta property="og:image" content="~/assets/og.png">
-<meta name="theme-color" content="#000725">
+<meta name="theme-color" content="#000625">
 
 <link rel="icon" href="~/assets/favicon.svg" type="image/svg+xml" asp-append-version="true">
 <link rel="manifest" href="~/manifest.webmanifest">
@@ -45,7 +45,11 @@
 <nav class="nav">
   <div class="nav__in">
     <a href="#" class="logo" aria-label="Boleto Licorería — inicio">
-      <span class="logo__mark">B</span>
+      @* El isotipo del kit reemplaza al sello con la "B". A 40 px sus
+         letras interiores no se leen, por eso sigue al lado la marca
+         escrita: el sello identifica, el texto nombra. *@
+      <img src="~/assets/marca/isotipo-claro.svg" alt="" class="logo__img"
+           width="1000" height="1000" asp-append-version="true">
       <span class="logo__txt">Boleto<small>Licorería</small></span>
     </a>
 
@@ -88,7 +92,10 @@
          Si el archivo no carga, cae al titular de texto: un h1 vacío
          dejaría la página sin encabezado. *@
       <h1 class="cartel__marca">
-        <img src="~/assets/logo.webp" width="1152" height="630" fetchpriority="high"
+        @* Versión azul del logo: la chapa es crema, y la variante marfil
+           quedaría invisible. El kit trae las dos y esta es la que
+           corresponde a fondo claro. *@
+        <img src="~/assets/marca/logo-oscuro.svg" width="928" height="643" fetchpriority="high"
              alt="@Model.Catalogo.Config.Tienda · licorería abierta las 24 horas, todos los días"
              asp-append-version="true"
              onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'display cartel__marca-txt',textContent:'A la hora que sea'}))">
@@ -156,7 +163,12 @@
         <p class="promo__p">Por la compra de cualquier <b>whisky</b> o <b>ron</b>.</p>
         <button class="btn btn--line btn--dark" id="promoBtn">Ver los que aplican</button>
       </div>
-      <div aria-hidden="true"><span class="seal"><em>Gratis</em><b>1.5 L</b></span></div>
+      @* El icono "acompañante" del kit: una botella con un más. Es
+         literalmente de lo que trata esta promoción. *@
+      <div class="promo__aside" aria-hidden="true">
+        <i class="ico ico--acompanante ico--xl"></i>
+        <span class="seal"><em>Gratis</em><b>1.5 L</b></span>
+      </div>
     </div>
   </div>
 </section>
@@ -222,6 +234,7 @@
 <!-- ══════════ CIERRE ══════════ -->
 <section class="close">
   <div class="wrap">
+    <i class="ico ico--hielo ico--xl close__ico" aria-hidden="true"></i>
     <h2 class="display close__h">¿Se acabó el hielo<br>a las 3 de la mañana?</h2>
     <p class="close__p">Escríbenos igual. No cerramos nunca.</p>
     <a class="btn btn--wa btn--xl" id="closeWa" href="#" target="_blank" rel="noopener">
@@ -235,7 +248,8 @@
   <div class="wrap">
     <div class="foot__in">
       <div class="logo">
-        <span class="logo__mark">B</span>
+        <img src="~/assets/marca/isotipo-claro.svg" alt="" class="logo__img"
+             width="1000" height="1000" asp-append-version="true">
         <span class="logo__txt">Boleto<small>Licorería</small></span>
       </div>
       <div class="foot__soc">
@@ -279,6 +293,7 @@
   }
   <div class="orderbar__in">
     <button class="peek" id="peek" aria-expanded="false" aria-controls="bubble">
+      <i class="ico ico--carrito" aria-hidden="true"></i>
       <span class="peek__sum"><b id="barTotal">S/ 0.00</b><span id="barCount">0 productos</span></span>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg>
     </button>
@@ -315,7 +330,11 @@
 {
 <div class="edad" id="edad" data-on="false" role="dialog" aria-modal="true" aria-labelledby="edadT">
   <div class="edad__box" id="edadAsk">
-    <img src="~/assets/logo.svg" alt="@Model.Catalogo.Config.Tienda" class="edad__logo" asp-append-version="true">
+    @* La caja es crema: va el logo azul, igual que el del hero. Antes
+       iba el archivo con fondo propio y se dibujaba un rectángulo
+       oscuro dentro de la tarjeta. *@
+    <img src="~/assets/marca/logo-oscuro.svg" alt="@Model.Catalogo.Config.Tienda"
+         class="edad__logo" width="928" height="643" asp-append-version="true">
     <h2 class="display" id="edadT">¿Eres mayor de 18 años?</h2>
     <p>La venta de bebidas alcohólicas a menores de edad está prohibida en el Perú (Ley N° 28681).</p>
     <div class="edad__btns">

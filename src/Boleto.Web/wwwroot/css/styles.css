@@ -5,14 +5,19 @@
    el verde --wa se usa ÚNICAMENTE en elementos que abren
    WhatsApp. Ningún otro botón, borde o texto puede ser verde.
    ══════════════════════════════════════════════════════════════ */
+/* Azul y rojo salen del kit de marca, tal cual vienen en los SVG
+   oficiales: así el logo apoya sobre el fondo sin un salto de tono.
+   El crema se deja como estaba —el marfil de la marca (#fefcec) es casi
+   blanco y aclararía toda la chapa del hero, que no es lo que se pidió.
+   Medido: rojo de marca sobre crema da 4.80:1, por encima del 4.5 de AA. */
 :root {
-    --marino: #000725;
+    --marino: #000625;
     --marino-2: #08103A;
     --marino-3: #141E52;
     --crema: #F7F1E3;
     --crema-2: #E7DDC6;
-    --rojo: #C8102E;
-    --rojo-osc: #9E0C24;
+    --rojo: #CF2026;
+    --rojo-osc: #9C191D;
     --wa: #25D366;
     --wa-osc: #1BB854;
     --tx-claro: #F7F1E3;
@@ -260,20 +265,6 @@ a {
     min-height: 44px
 }
 
-.logo__mark {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    flex-shrink: 0;
-    background: var(--rojo);
-    color: var(--crema);
-    display: grid;
-    place-items: center;
-    font-family: var(--display);
-    font-weight: 700;
-    font-size: 1.3rem
-}
-
 .logo__txt {
     font-family: var(--display);
     font-weight: 700;
@@ -461,6 +452,63 @@ a {
             color: var(--rojo);
             text-decoration-color: var(--rojo)
         }
+
+.promo__aside {
+    display: grid;
+    justify-items: center;
+    gap: 14px
+}
+
+    /* El sello mide 170: a 48 el icono se veía suelto encima. */
+    .promo__aside .ico {
+        width: 62px;
+        height: 62px
+    }
+
+/* ══════════════════════════════════════════════════════════════
+   ICONOS DE MARCA
+   Los tres del kit —carrito, hielo y acompañante— van donde
+   significan algo, no de adorno: el carrito en el resumen del
+   pedido, el hielo en la sección que habla del hielo y el
+   acompañante en la promoción, que es de eso.
+
+   Se pintan como máscara y no como <img> porque así heredan el
+   color del texto que acompañan: el mismo archivo sirve sobre la
+   chapa crema y sobre el fondo noche. Si el navegador no soporta
+   máscaras, el icono simplemente no se dibuja — no aparece un
+   cuadrado de color donde debería haber una silueta.
+   ══════════════════════════════════════════════════════════════ */
+.ico {
+    width: 22px;
+    height: 22px;
+    flex-shrink: 0;
+    display: inline-block
+}
+
+@supports (mask-image:url(a)) or (-webkit-mask-image:url(a)) {
+    .ico {
+        background: currentColor;
+        -webkit-mask: var(--ico) no-repeat center/contain;
+        mask: var(--ico) no-repeat center/contain
+    }
+}
+
+.ico--xl {
+    width: 48px;
+    height: 48px
+}
+
+.ico--carrito {
+    --ico: url(/assets/iconos/carrito.svg)
+}
+
+.ico--hielo {
+    --ico: url(/assets/iconos/hielo.svg)
+}
+
+.ico--acompanante {
+    --ico: url(/assets/iconos/acompanante.svg)
+}
 
 /* ── Secciones ────────────────────────────────────────────── */
 .sec {
@@ -1069,6 +1117,11 @@ a {
     padding: 86px 0
 }
 
+.close__ico {
+    color: var(--tx-tenue);
+    margin: 0 auto 18px
+}
+
 .close__h {
     font-size: clamp(2rem,5.4vw,3.4rem);
     margin-bottom: 14px
@@ -1563,19 +1616,24 @@ img.i-wa {
    El archivo trae su propio fondo marino. Como el token --marino
    ahora es el mismo color del logo, el rectángulo se funde con el
    nav y no hace falta recortarlo. */
+/* El isotipo es cuadrado y trae sus propias dimensiones en el SVG: se
+   fija por alto y el ancho lo sigue. */
 .logo__img {
-    height: 38px !important; /* el SVG trae dimensiones propias */
-    width: auto !important;
-    display: block;
+    height: 44px;
+    width: 44px;
+    flex-shrink: 0;
+    display: block
 }
 
 .foot .logo__img {
-    height: 34px !important
+    height: 40px;
+    width: 40px
 }
 
 @media(max-width:520px) {
     .logo__img {
-        height: 30px !important
+        height: 38px;
+        width: 38px
     }
 }
 
@@ -1716,23 +1774,22 @@ img.i-wa {
    ══════════════════════════════════════════════════════════════ */
 /* ══════════════════════════════════════════════════════════════
    LOGO DEL HERO
-   El logo trae su propio fondo azul marino —#000828, el mismo del
-   sitio— y letras crema. Sobre la chapa crema queda como una placa,
-   que es como se lee bien: recortarle el fondo dejaría letras crema
-   sobre crema, invisibles.
+   El kit de marca trae el logo en azul y en marfil. Sobre la chapa
+   crema va el azul, apoyado directo sobre el fondo: es un vector con
+   transparencia, no necesita placa ni recuadro.
    ══════════════════════════════════════════════════════════════ */
 /* Con el elemento delante: `.cartel h1` de arriba pesa más que una
    clase sola y le devolvería su margen de titular de texto. */
 .cartel h1.cartel__marca {
-    margin: 6px auto 2px;
+    margin: 0 auto;
     line-height: 0
 }
 
     .cartel__marca img {
         width: 100%;
-        max-width: 520px;
+        max-width: 400px;
         height: auto;
-        border-radius: 14px;
+        margin-inline: auto;
         /* El ancho y el alto van también en el HTML: la imagen manda el
            alto del hero y sin reservarlo el titular salta al cargar. */
     }

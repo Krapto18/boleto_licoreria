@@ -1,4 +1,33 @@
-logo.svg      placeholder — reemplazar por el oficial del cliente
-favicon.svg   placeholder
-og.png        1200x630 · imagen que se ve al compartir el link por WhatsApp
-productos/    fotos de producto (webp, fondo blanco, ~600x600, <60 KB)
+Todo lo de marca sale del kit oficial del cliente (Boleto Kit de marca).
+Nada de esto es placeholder.
+
+marca/
+  logo-oscuro.svg    logo azul + rojo · para fondos claros (hero, verificación de edad)
+  logo-claro.svg     logo marfil + rojo · para fondos noche
+  isotipo-claro.svg  sello circular marfil · nav, pie de página y panel
+  isotipo-oscuro.svg sello circular azul · por si hace falta sobre fondo claro
+  isotipo-pleno.svg  el sello sobre cuadrado azul a sangre — NO se usa en la web:
+                     es el original desde el que se rasterizan icon-192 y icon-512
+
+iconos/            los tres del kit. Se pintan como máscara CSS para que
+                   hereden el color del texto (ver .ico en styles.css)
+  carrito.svg        resumen del pedido en la barra
+  hielo.svg          sección de cierre
+  acompanante.svg    sección de promoción
+
+favicon.svg        el isotipo sobre cuadrado azul con esquinas redondeadas
+icon-192.png       PWA · rasterizados desde marca/isotipo-pleno.svg
+icon-512.png       PWA · sirve también como maskable (el sello ocupa el 68 %,
+                   así el recorte circular del sistema no se come el aro)
+og.png             1200x630 · lo que se ve al compartir el link por WhatsApp
+
+productos/         fotos de producto (webp, fondo transparente, 500x500)
+                   ver tools/README.md
+
+COLORES OFICIALES (leídos de los propios SVG del kit)
+  azul noche  #000625
+  rojo        #CF2026
+  marfil      #FEFCEC
+El sitio usa el azul y el rojo tal cual. El crema del hero se mantiene en
+#F7F1E3, más cálido que el marfil de la marca: cambiarlo aclararía toda la
+chapa y eso no se pidió.

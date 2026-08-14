@@ -673,7 +673,7 @@ reserva su espacio antes de cargar, así el resto del hero no salta.
 
 ## 36. Qué se verifica solo de todo esto
 
-23 comprobaciones nuevas en `tests/flujo-pedido.js`, sobre las 40 que ya había:
+28 comprobaciones nuevas en `tests/flujo-pedido.js`, sobre las 40 que ya había:
 
 - El sello ya no está y el buscador ocupa su lugar
 - Escribir en el nav filtra la grilla y el otro campo repite el texto; borrar en
@@ -688,8 +688,57 @@ reserva su espacio antes de cargar, así el resto del hero no salta.
 - Cada banner cae en su carrusel, el segundo va debajo del primero, cada uno
   tiene sus puntos, mover uno no marca los del otro, los puntos se tocan a 44 px
   y el enlace "Catálogo" salta por encima de los dos
+- Ninguna pieza de marca queda rota, el isotipo está en el nav y en el pie, los
+  tres iconos están y cada uno recorta su silueta con la máscara del SVG
 
 Los carruseles se prueban **inyectando banners en la respuesta**, porque la base
 todavía no tiene ninguno cargado. Sin eso, la función quedaría sin probar hasta
 que el dueño subiera el primero — que es tarde para enterarse de que algo no
 funciona.
+
+## 37. El kit de marca
+
+Llegó el kit oficial: logos en cinco variantes de color, isotipo, tres iconos y
+el manual. Hasta entonces la web funcionaba con placeholders — un sello con la
+letra "B" y un logo que era un PNG metido en un SVG.
+
+**Qué variante va en cada sitio, y por qué importa.** El kit trae el logo en azul
+y en marfil porque están pensados para fondos opuestos. La chapa del hero es
+crema: ahí va el azul. Si se pusiera el marfil se leerían letras crema sobre
+crema. Es la misma razón por la que el modal de verificación de edad cambió: traía
+el archivo con fondo propio y dibujaba un rectángulo oscuro dentro de una tarjeta
+clara.
+
+**Los iconos se pintan como máscara, no como imagen.** Un `<img>` no puede
+heredar el color del texto que lo acompaña; una máscara sí. Con un solo archivo,
+el carrito sale crema en la barra de pedido y el acompañante sale azul sobre la
+chapa de la promoción. La regla va dentro de un `@supports`: si el navegador no
+soporta máscaras el icono no se dibuja, en vez de dejar un cuadrado de color
+donde debería haber una silueta.
+
+**Van donde significan algo.** El carrito en el resumen del pedido, el hielo en
+la sección que pregunta si se acabó el hielo a las 3 a.m., el acompañante en la
+promoción de la gaseosa gratis. Tres iconos, una instancia cada uno. Repartirlos
+por decoración los habría convertido en ruido y habría competido con lo único
+que tiene que destacar, que es el verde de WhatsApp (punto 3).
+
+**Al logo se le ciñó el `viewBox`.** El arte mide 909×624 dentro de un lienzo de
+1046×1030 — el 40 % del alto es vacío que el exportador dejó. En el hero eso
+salía como un bache entre el logo y la filigrana. Ceñirlo al arte con un 1 % de
+margen lo arregla sin tocar el dibujo.
+
+**La paleta pasó a la del manual**, leída de los propios SVG: azul `#000625` y
+rojo `#CF2026`, contra los `#000725` y `#C8102E` que se habían elegido a ojo
+antes de que hubiera manual. Medido antes de aplicarlo: el rojo de marca sobre
+crema da **4.80:1**, por encima del 4.5 de AA — más justo que el 5.22 anterior,
+pero cumple, y es el color de la marca.
+
+**El crema se mantiene.** El marfil del manual es `#FEFCEC`, casi blanco.
+Aplicarlo aclararía toda la chapa del hero y las tarjetas de promoción, que es un
+cambio de aspecto que nadie pidió. Queda anotado por si el cliente lo prefiere:
+es una variable.
+
+**El service worker subió a `boleto-v2`.** Un service worker sirve de su caché
+antes de mirar la red: sin subir la versión, quien ya había entrado seguiría
+viendo el logo viejo hasta vaciar el navegador. Es el tipo de detalle que no
+falla en desarrollo —donde nadie tiene caché— y falla para todos los demás.

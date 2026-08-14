@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000" role="img" aria-label="Boleto Licoreria">
-  <rect width="1000" height="1000" rx="190" fill="#000625"/>
+  <rect width="1000" height="1000" fill="#000625"/>
   <g transform="translate(160,160) scale(0.68)">
   <defs>
     <style>

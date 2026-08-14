@@ -9,7 +9,7 @@
     --marino-3: #1C2A5C;
     --crema: #F7F1E3;
     --crema-2: #E7DDC6;
-    --rojo: #C8102E;
+    --rojo: #CF2026;
     --ambar: #E0A32E;
     --verde: #1E9E5A;
     --tx-claro: #F7F1E3;
@@ -89,17 +89,13 @@ a {
     gap: 10px
 }
 
-.logo__mark {
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    background: var(--rojo);
-    color: var(--crema);
-    display: grid;
-    place-items: center;
-    font-family: var(--display);
-    font-weight: 700;
-    font-size: 1.15rem
+/* El isotipo del kit de marca, el mismo que en la web pública: el
+   dueño entra al panel y ve su marca, no una inicial provisional. */
+.logo__img {
+    width: 38px;
+    height: 38px;
+    flex-shrink: 0;
+    display: block
 }
 
 .logo__txt {

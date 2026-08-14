@@ -420,6 +420,40 @@ async function navegacion(browser) {
     ok(/24 horas/i.test(marca.alt),
        `el texto alternativo carga la propuesta de valor ("${marca.alt}")`);
     ok(marca.cargo, 'el logo del hero carga de verdad (si no, el h1 queda vacío)');
+
+    /* ── El kit de marca ──────────────────────────────────────
+       Piezas que no se ven fallar: un SVG que no carga deja un
+       hueco silencioso, y una máscara CSS que no se aplica deja un
+       cuadrado de color donde debería haber una silueta. */
+    const kit = await p.evaluate(() => {
+      const rotas = [...document.querySelectorAll('img')]
+        .filter((i) => i.complete && i.naturalWidth === 0 && !i.hidden)
+        .map((i) => i.getAttribute('src'));
+      const iconos = [...document.querySelectorAll('.ico')].map((el) => {
+        const cs = getComputedStyle(el);
+        const r = el.getBoundingClientRect();
+        return {
+          clase: el.className,
+          mascara: (cs.maskImage || cs.webkitMaskImage || 'none'),
+          w: Math.round(r.width), h: Math.round(r.height)
+        };
+      });
+      return { rotas, iconos, sellos: document.querySelectorAll('.logo__img').length };
+    });
+    ok(kit.rotas.length === 0,
+       'ninguna imagen de marca queda rota' +
+       (kit.rotas.length ? ` — ${kit.rotas.join(', ')}` : ''));
+    ok(kit.sellos >= 2, `el isotipo está en el nav y en el pie (${kit.sellos})`);
+    ok(kit.iconos.length === 3, `los tres iconos del kit están en la página (${kit.iconos.length})`);
+
+    const sinMascara = kit.iconos.filter((i) => !/url\(/.test(i.mascara));
+    ok(sinMascara.length === 0,
+       'cada icono recorta su silueta con la máscara del SVG' +
+       (sinMascara.length ? ` — sin máscara: ${sinMascara.map((i) => i.clase).join(', ')}` : ''));
+    const sinCaja = kit.iconos.filter((i) => i.w < 16 || i.h < 16);
+    ok(sinCaja.length === 0,
+       'y ninguno queda sin caja' +
+       (sinCaja.length ? ` — ${sinCaja.map((i) => `${i.clase} ${i.w}x${i.h}`).join(', ')}` : ''));
     ok(await p.isVisible('#qNav'), 'el buscador ocupa su lugar en el nav');
     ok(!(await p.isVisible('#burger')), 'en escritorio no aparece la hamburguesa');
     ok(await p.isVisible('.nav__links a[href="#catalogo"]') &&

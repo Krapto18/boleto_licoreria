@@ -1,11 +1,20 @@
 /* Service worker — catálogo disponible sin señal.
    A las 3 a.m. con mala cobertura, la web igual abre. */
-const CACHE = 'boleto-v1';
+/* La versión SE SUBE cada vez que cambia esta lista o alguno de sus
+   archivos: al activarse, el worker borra las cachés que no coinciden.
+   Sin subirla, quien ya visitó el sitio seguiría viendo los archivos
+   viejos —el logo anterior, por ejemplo— hasta vaciar el navegador. */
+const CACHE = 'boleto-v2';
 /* Rutas de ASP.NET, no archivos sueltos. El catálogo ya viene dentro
-   del HTML de '/', así que cachearlo alcanza para funcionar sin señal. */
+   del HTML de '/', así que cachearlo alcanza para funcionar sin señal.
+   Las piezas de marca entran porque salen en la primera pantalla: sin
+   ellas, sin señal se abre una web sin logo. */
 const ASSETS = [
-  '/', '/css/styles.css', '/js/app.js',
-  '/assets/favicon.svg', '/assets/logo.svg', '/manifest.webmanifest'
+  '/', '/css/styles.css', '/js/app.js', '/manifest.webmanifest',
+  '/assets/favicon.svg',
+  '/assets/marca/logo-oscuro.svg', '/assets/marca/isotipo-claro.svg',
+  '/assets/iconos/carrito.svg', '/assets/iconos/hielo.svg',
+  '/assets/iconos/acompanante.svg'
 ];
 
 self.addEventListener('install', (e) => {

@@ -227,9 +227,44 @@ leen Google y un lector de pantalla; el párrafo de abajo la repite en pantalla.
 Si el archivo no carga, un `onerror` devuelve el titular de texto: un `<h1>` con
 una imagen rota es un `<h1>` vacío.
 
-El logo se sirve como `logo.webp` (**62 KB**, sin pérdida) y no como el
-`logo.svg` de 194 KB, que era un PNG en base64 dentro de un SVG. Es el elemento
-que mide el LCP del hero, y esta web se abre desde datos móviles de madrugada.
+## Kit de marca
+
+Todo lo de marca sale del kit oficial del cliente. Ya no queda ningún
+placeholder: el `logo.svg` de 194 KB —un PNG en base64 dentro de un SVG— y el
+sello improvisado con una "B" se fueron.
+
+Lo que se usa vive en `wwwroot/assets/`, renombrado por para qué sirve y no por
+cómo venía. El inventario completo, con qué es cada archivo y de dónde sale,
+está en `wwwroot/assets/LEEME.txt`.
+
+| Dónde | Pieza |
+|---|---|
+| Hero y verificación de edad | `marca/logo-oscuro.svg` — la versión azul, porque el fondo es crema |
+| Nav, pie, panel y login | `marca/isotipo-claro.svg` — el sello circular |
+| Favicon e íconos PWA | el sello sobre cuadrado azul, rasterizado desde `marca/isotipo-pleno.svg` |
+| Al compartir por WhatsApp | `og.png`, el logo marfil sobre azul |
+| Resumen del pedido | `iconos/carrito.svg` |
+| Sección de cierre | `iconos/hielo.svg` |
+| Promoción | `iconos/acompanante.svg` — una botella con un más, que es de lo que trata |
+
+**Los iconos se pintan como máscara CSS**, no como `<img>`. Así heredan el color
+del texto que acompañan y el mismo archivo sirve sobre la chapa crema y sobre el
+fondo noche. Si el navegador no soporta máscaras, el icono no se dibuja — no
+aparece un cuadrado de color donde debería haber una silueta.
+
+**Al logo se le ciñó el `viewBox`.** El arte ocupa 909×624 dentro de un lienzo de
+1046×1030: el 40 % del alto era vacío, y en el hero eso salía como un bache entre
+el logo y la filigrana.
+
+**La paleta pasó a la oficial**, leída de los propios SVG del kit: azul
+`#000625` y rojo `#CF2026`. Antes eran `#000725` y `#C8102E`, aproximaciones de
+cuando no había manual. El rojo de marca sobre crema da 4.80:1, por encima del
+4.5 que pide AA. **El crema del hero se mantiene** en `#F7F1E3`: el marfil de la
+marca (`#FEFCEC`) es casi blanco y aclararía toda la chapa, que no es lo que se
+pidió — está a un cambio de variable si el cliente lo prefiere.
+
+**El service worker subió a `boleto-v2`.** Sin subir la versión, quien ya visitó
+el sitio seguiría viendo el logo anterior desde su caché.
 
 ## Seguridad del panel
 

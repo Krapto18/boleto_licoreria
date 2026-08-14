@@ -465,14 +465,41 @@ async function navegacion(browser) {
        está escrito en el campo que tiene delante. */
     const nombre = (await p.textContent('.card .card__name')).trim().split(' ')[0];
     const antes = await p.locator('.card').count();
-    await p.fill('#qNav', nombre);
-    await p.waitForTimeout(350);
+
+    /* Se escribe tecla por tecla, no con fill(): el defecto que reportó
+       el dueño solo aparecía escribiendo, porque era un repintado por
+       cada tecla lo que arrastraba la vista. */
+    await p.click('#qNav');
+    await p.keyboard.type(nombre, { delay: 60 });
+    await p.waitForTimeout(600);
     const despues = await p.locator('.card').count();
 
     ok(despues > 0 && despues <= antes,
        `buscar desde el nav filtra el catálogo (${antes} → ${despues} con "${nombre}")`);
     ok((await p.inputValue('#q')) === nombre,
        'el buscador del catálogo repite lo que se escribió en el del nav');
+
+    /* Lo que reportó el dueño: "no filtra y se mueve en la pantalla".
+       Filtraba, pero el navegador arrastraba la vista hacia la posición
+       de maquetado del campo —dentro del nav pegajoso— 72 px por tecla,
+       hasta dejarlo de vuelta en el hero y sin ver un solo producto. */
+    const conFoco = await p.evaluate(() => document.activeElement.id);
+    ok(conFoco === 'q',
+       `el cursor pasa al buscador del catálogo, junto a los resultados (quedó en #${conFoco})`);
+
+    const alaVista = await p.evaluate(() =>
+      [...document.querySelectorAll('.card')].filter((c) => {
+        const r = c.getBoundingClientRect();
+        return r.top < window.innerHeight && r.bottom > 0;
+      }).length);
+    ok(alaVista > 0, `buscar desde el nav deja resultados a la vista (${alaVista})`);
+
+    const y1 = await p.evaluate(() => Math.round(window.scrollY));
+    await p.keyboard.type(' xyz', { delay: 60 });
+    await p.waitForTimeout(600);
+    const y2 = await p.evaluate(() => Math.round(window.scrollY));
+    ok(Math.abs(y2 - y1) <= 8,
+       `seguir escribiendo no mueve la página (${Math.abs(y2 - y1)} px)`);
 
     await p.fill('#q', '');
     await p.waitForTimeout(300);
@@ -515,6 +542,10 @@ async function navegacion(browser) {
        'dentro del menú está el catálogo');
     ok(!(await p.isVisible('.nav__link--esc')),
        'en móvil el menú queda con lo pedido: solo el catálogo');
+    /* El buscador estuvo en el panel y era un estorbo: el propio panel
+       tapa la grilla, así que se escribía sin ver ningún resultado. */
+    ok(!(await p.isVisible('#qNav')),
+       'el buscador NO está en el panel: taparía los resultados que muestra');
     ok(await p.evaluate(() => document.activeElement?.closest('#navMenu') !== null),
        'al abrir, el foco entra al menú');
 
@@ -532,6 +563,30 @@ async function navegacion(browser) {
     await p.waitForTimeout(400);
     ok(await abierto() === 'false',
        'elegir una opción cierra el menú (si no, tapa la sección a la que salta)');
+
+    /* ── Entrar es entrar por el principio ──────────────────────
+       El navegador restaura el scroll de la visita anterior. En una
+       tienda que se abre y se cierra varias veces al día, eso dejaba al
+       cliente a media página: medido, volvía a 2567 px, sin ver el
+       titular ni el botón de WhatsApp del hero. */
+    await p.evaluate(() => {
+      document.documentElement.style.scrollBehavior = 'auto';
+      document.querySelector('#catalogo').scrollIntoView();
+    });
+    await p.waitForTimeout(300);
+    const dejado = await p.evaluate(() => Math.round(window.scrollY));
+
+    await p.reload({ waitUntil: 'networkidle' });
+    await p.waitForTimeout(900);
+    const alVolver = await p.evaluate(() => Math.round(window.scrollY));
+    ok(dejado > 500 && alVolver === 0,
+       `volver a entrar arranca en el inicio (se dejó en ${dejado}, volvió en ${alVolver})`);
+
+    /* Un ancla sí manda: el destino lo pidió quien compartió el enlace. */
+    await p.goto(URL.replace(/\/?$/, '/') + '#catalogo', { waitUntil: 'networkidle' });
+    await p.waitForTimeout(800);
+    ok(await p.evaluate(() => Math.round(window.scrollY)) > 500,
+       'un enlace con #catalogo sigue llevando al catálogo');
 
     await ctx.close();
   }

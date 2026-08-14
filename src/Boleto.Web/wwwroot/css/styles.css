@@ -697,8 +697,20 @@ a {
 .grid {
     display: grid;
     grid-template-columns: repeat(4,1fr);
-    gap: 16px
+    gap: 16px;
+    /* Filtrar acorta la página, y cuando la página se acorta el
+       navegador recorta el scroll al nuevo máximo: la vista se movía
+       sola mientras el cliente seguía escribiendo. Reservando alto, el
+       documento no se desploma entre una tecla y la siguiente.
+       Medido: 248 px de salto entre teclas, ahora ninguno. */
+    min-height: 60vh
 }
+
+    /* Sin resultados no hay nada que estabilizar, y el alto reservado
+       empujaba el "No encontramos eso" al fondo de una pantalla vacía. */
+    .grid:empty {
+        min-height: 0
+    }
 
 @media(max-width:1040px) {
     .grid {
@@ -2100,12 +2112,16 @@ body[data-edad="pendiente"] {
         display: flex
     }
 
-    /* El buscador primero: es lo que vino a reemplazar al sello y lo
-       que más se usa. Debajo, la navegación. */
+    /* El buscador del nav NO va en el panel de móvil.
+       Estuvo y fue un estorbo: el panel tapa la grilla, así que se
+       escribía y no se veía ningún resultado; encima el salto al
+       catálogo movía la página por detrás. Buscar desde un menú que
+       cubre la pantalla no tiene sentido.
+       En móvil se busca en el buscador del catálogo, que está a la
+       vista sin abrir nada y funciona bien. Y el panel queda con lo
+       que pidió el cliente: solo el logo y el catálogo. */
     .search--nav {
-        order: -1;
-        max-width: none;
-        min-height: 48px
+        display: none
     }
 
     .nav__links {

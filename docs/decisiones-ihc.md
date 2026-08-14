@@ -673,7 +673,7 @@ reserva su espacio antes de cargar, así el resto del hero no salta.
 
 ## 36. Qué se verifica solo de todo esto
 
-33 comprobaciones nuevas en `tests/flujo-pedido.js`, sobre las 40 que ya había:
+39 comprobaciones nuevas en `tests/flujo-pedido.js`, sobre las 40 que ya había:
 
 - El sello ya no está y el buscador ocupa su lugar
 - Escribir en el nav filtra la grilla y el otro campo repite el texto; borrar en
@@ -692,6 +692,10 @@ reserva su espacio antes de cargar, así el resto del hero no salta.
   tres iconos están y cada uno recorta su silueta con la máscara del SVG
 - El mensaje de WhatsApp detalla de qué está compuesto el combo, y lo que el
   panel desmarcó no viaja al navegador
+- Buscar desde el nav deja resultados a la vista, pasa el cursor al buscador del
+  catálogo y seguir escribiendo no mueve la página — se escribe tecla por tecla,
+  porque con `fill()` el defecto no aparecía
+- Volver a entrar arranca en el inicio, y un enlace con ancla sigue mandando
 
 Los carruseles se prueban **inyectando banners en la respuesta**, porque la base
 todavía no tiene ninguno cargado. Sin eso, la función quedaría sin probar hasta
@@ -808,3 +812,55 @@ pista.
 **Se siembran solo si la tabla está vacía**, igual que las zonas de reparto. Son
 artes del cliente, no relleno, pero llevan precios de un momento dado: el dueño
 los reemplaza desde el panel y el seed no vuelve a tocarlos.
+
+## 40. Tres defectos que reportó el dueño
+
+**El buscador suelto del panel estaba pegado a la grilla.** En "Productos y fotos"
+el hueco entre el campo y la primera foto medía **0 px**. En "Precios y stock" no
+pasaba porque entre medio hay filtros y contador. Se le da margen al buscador que
+va suelto dentro de una pestaña; el que vive dentro de `.tools` no lo necesita,
+ahí ya separa el gap de la columna.
+
+**El buscador del nav "no filtraba y se movía".** Filtraba —medido, 55 tarjetas a
+3— pero el cliente no llegaba a verlo. Tres causas, encontradas midiendo:
+
+1. **El repintado arrastraba la vista.** Al reemplazar la grilla, el navegador
+   vuelve a poner a la vista el elemento con el foco. El buscador del catálogo
+   está en el flujo normal, pegado a la grilla, y no mueve nada — por eso ese
+   nunca falló. El del nav vive dentro de una barra `position: sticky`, y la
+   posición de maquetado de una barra pegajosa está arriba de todo: **72 px
+   exactos por tecla** hacia el inicio, sin una sola llamada de scroll y sin que
+   cambiara el alto de la página. Escribiendo "johnnie", la vista terminaba de
+   vuelta en el hero.
+
+2. **`behavior: 'auto'` no es instantáneo.** Significa "usa lo que diga el CSS", y
+   el CSS de esta página dice `scroll-behavior: smooth`. El salto al catálogo
+   tardaba 900 ms y cada tecla le cortaba la animación a media carrera. El valor
+   que salta de una es `'instant'`.
+
+3. **En móvil el panel tapa lo que muestra.** Se escribía en un buscador que
+   ocupa la pantalla y los resultados quedaban detrás.
+
+La solución no fue pelearle al navegador —devolver la vista a su sitio después de
+cada repintado no alcanza, el arrastre no ocurre en un solo cuadro— sino que el
+buscador del nav haga lo que de verdad es: **una puerta de entrada**. Con la
+primera letra lleva al catálogo y le pasa el texto y el cursor a su buscador, que
+está junto a los resultados. De ahí en adelante se escribe donde el problema no
+existe, y de paso el foco queda al lado de lo que cambia, que es lo que
+corresponde. **En móvil directamente no está**: se busca en el del catálogo, que
+está a la vista sin abrir nada, y el panel queda con lo que pidió el cliente —
+solo el logo y el catálogo.
+
+Se apunta al contador ("3 productos") y no al inicio de la sección: con el
+titular, la filigrana, el buscador y los filtros por medio, llevar a la sección
+dejaba la grilla 128 px por debajo del pliegue. Y la grilla reserva alto
+(`min-height`) para que filtrar no acorte la página de golpe — se anula cuando
+queda vacía, o el "No encontramos eso" se iba al fondo de una pantalla en blanco.
+
+**Entrar por el medio de la página.** El navegador guarda el scroll de la visita
+anterior y lo restaura al volver. En una tienda que se abre y se cierra varias
+veces al día —y encima instalada como app— el cliente entraba a media página y
+nunca veía el titular ni el botón de WhatsApp del hero: medido, volvía a
+**2567 px**, tres pantallas abajo, directo a los banners. Se apaga la
+restauración y se arranca arriba. Si el enlace trae un ancla se respeta: ahí el
+destino lo pidió quien mandó el enlace, no el navegador.

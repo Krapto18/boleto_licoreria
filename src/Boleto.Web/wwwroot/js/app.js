@@ -13,6 +13,23 @@
 
   const LS_PEDIDO = 'boleto:pedido';
 
+  /* ══════════════════════════════════════════════════════════
+     Entrar es entrar por el principio
+
+     El navegador guarda el scroll de la visita anterior y lo restaura
+     al volver. En una tienda que se abre y se cierra varias veces al
+     día —y encima instalada como app— eso significa que el cliente
+     entra a media página y nunca ve el titular ni el botón de
+     WhatsApp del hero. Medido: volvía a 2567 px, tres pantallas
+     abajo, directo a los banners.
+
+     Se apaga la restauración y se arranca arriba. Si el enlace trae
+     un ancla (#catalogo, el que sale del propio menú) se respeta: ahí
+     el destino lo pidió quien mandó el enlace, no el navegador.
+     ══════════════════════════════════════════════════════════ */
+  if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+  if (!location.hash && window.scrollY) window.scrollTo({ top: 0, behavior: 'instant' });
+
   const carrito = new Map();
   const modos   = new Map();
   let grupo = 'Todo', busca = '', ultima = null, toastT = null, yaAbrio = false;
@@ -113,22 +130,75 @@
 
   /* Buscar desde el nav sin ver la grilla es teclear a ciegas: si el
      catálogo no está en pantalla, se trae. Nielsen #1 — el sistema
-     tiene que mostrar el efecto de lo que uno hace. */
-  let acercando = false;
+     tiene que mostrar el efecto de lo que uno hace.
+
+     Dos detalles que estaban mal y hacían que el buscador del nav
+     pareciera roto:
+
+     1. Se desplazaba en cada tecla. Filtrar acorta la página —de 55
+        tarjetas a 3— y el navegador recorta el scroll al nuevo máximo,
+        así que la vista terminaba volviendo al inicio. Medido: 253 →
+        311 → 236 → 164 → 92 → 20 → 0. El cliente veía la página
+        temblar y ningún resultado. Ahora se acerca UNA vez, al empezar
+        a escribir, y se rearma solo cuando se borra el campo.
+
+     2. Iba con desplazamiento suave, que es una animación corriendo
+        contra el repintado de la grilla. El salto es instantáneo: no
+        hay nada que animar cuando el destino se mueve.
+
+        Ojo con el nombre: `behavior: 'auto'` NO es instantáneo. Es
+        "usa lo que diga el CSS", y el CSS de esta página dice
+        `scroll-behavior: smooth`. El valor que salta de una es
+        `'instant'`. Medido con 'auto': la vista tardaba 900 ms en
+        llegar y cada tecla le cortaba la animación a media carrera. */
+  /* Se apunta al contador ("3 productos") y no al inicio de la sección:
+     con el titular, la filigrana, el buscador y los filtros por medio,
+     llevar a la sección dejaba la grilla 128 px por debajo del pliegue
+     — el cliente llegaba y seguía sin ver un solo producto. Desde el
+     contador se lee cuántos quedaron y las tarjetas empiezan ahí
+     mismo. */
   function acercarCatalogo() {
-    const sec = document.getElementById('catalogo');
+    const destino = document.getElementById('count') || document.getElementById('catalogo');
+    const grid = document.getElementById('grid').getBoundingClientRect();
     const alto = document.querySelector('.nav')?.getBoundingClientRect().height || 0;
-    const r = sec.getBoundingClientRect();
-    if (r.top <= alto + 8 && r.bottom > window.innerHeight / 2) return;  // ya se ve
-    if (acercando) return;
-    acercando = true;
-    sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    setTimeout(() => { acercando = false; }, 700);
+    if (grid.top >= alto && grid.top < window.innerHeight * 0.6) return;  // ya se ve
+    destino.scrollIntoView({ behavior: 'instant', block: 'start' });
   }
 
+  /* Por qué el buscador del catálogo nunca falló y el del nav sí.
+
+     Al repintar la grilla, el navegador vuelve a poner a la vista el
+     elemento que tiene el foco. El del catálogo está en el flujo
+     normal, pegado a la grilla: no se mueve nada. El del nav vive
+     dentro de una barra `position: sticky`, y la posición de maquetado
+     de una barra pegajosa está arriba de todo — así que el navegador
+     arrastraba la vista hacia el inicio.
+
+     Medido: 72 px exactos por tecla, sin una sola llamada de scroll y
+     sin que cambiara el alto de la página. Escribiendo "johnnie", la
+     vista terminaba de vuelta en el hero: el cliente veía la página
+     moverse sola y ni un resultado.
+
+     Se intentó devolver la vista a su sitio después de cada repintado
+     y no alcanza: el arrastre no ocurre en un solo cuadro.
+
+     Así que el buscador del nav hace lo que de verdad es —una puerta de
+     entrada— y no intenta ser el buscador. Con la primera letra lleva
+     al catálogo y le pasa el texto y el cursor a su buscador, que está
+     junto a los resultados. De ahí en adelante se escribe donde el
+     problema no existe, y de paso el foco queda al lado de lo que
+     cambia, que es lo que corresponde. */
   CAMPOS_Q.forEach((s) => $(s)?.addEventListener('input', (e) => {
     buscar(e.target.value, e.target);
-    if (e.target.id === 'qNav' && busca) acercarCatalogo();
+    if (e.target.id !== 'qNav' || !busca) return;
+
+    acercarCatalogo();
+
+    const q = $('#q');
+    if (!q || document.activeElement === q) return;
+    q.focus({ preventScroll: true });
+    // Sin esto el cursor queda al principio y la siguiente letra entra al revés.
+    q.setSelectionRange(q.value.length, q.value.length);
   }));
 
   $('#promoBtn').addEventListener('click', () => {

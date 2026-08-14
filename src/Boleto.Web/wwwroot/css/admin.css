@@ -208,6 +208,13 @@ a {
         border-color: var(--ambar)
     }
 
+    /* Un buscador suelto —el de Productos y fotos— quedaba a 0 px de la
+       grilla, pegado. Dentro de .tools no lleva margen: ahí ya separa el
+       gap de la columna. */
+    .panel > .search {
+        margin-bottom: 22px
+    }
+
     .search svg {
         width: 17px;
         height: 17px;

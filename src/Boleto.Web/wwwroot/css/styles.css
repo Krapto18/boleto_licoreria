@@ -1884,14 +1884,22 @@ img.i-wa {
 /* Vive en la barra de pedido, fuera de la vista previa: el costo del
    delivery entra en el total y el cliente tiene que poder verlo sin
    desplegar nada. */
+/* El fondo va a sangre y el contenido queda alineado con el resto de la
+   barra. Antes la caja medía `max-width: var(--max)` con fondo propio:
+   con la vista previa abierta se leía como su continuación, pero al
+   cerrarla quedaba un rectángulo más claro flotando dentro de la barra
+   negra, con dos bordes verticales que no coincidían con nada.
+
+   El relleno lateral reproduce el centrado del contenedor de al lado sin
+   necesitar un envoltorio extra: 20 px pegado a los bordes, y a partir
+   de --max lo que sobre repartido a los dos lados. */
 .distrito {
     display: flex;
     align-items: center;
-    gap: 12px;
-    margin: 0 auto;
-    padding: 8px 14px;
-    max-width: var(--max);
-    background: rgba(247,241,227,.06);
+    gap: 14px;
+    padding-block: 9px;
+    padding-inline: max(20px, calc((100% - var(--max)) / 2 + 20px));
+    background: rgba(247,241,227,.05);
     border-bottom: 1px solid var(--marino-3);
 }
 
@@ -1914,8 +1922,12 @@ img.i-wa {
     white-space: nowrap;
 }
 
+/* Un nombre de distrito no necesita 1180 px. Se le pone tope y en
+   escritorio queda del ancho de lo que tiene que mostrar; en móvil el
+   flex: 1 lo estira a lo que haya. */
 .distrito select {
     flex: 1;
+    max-width: 440px;
     min-height: 40px;
     min-width: 0;
     background: var(--marino);

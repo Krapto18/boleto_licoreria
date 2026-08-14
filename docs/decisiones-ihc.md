@@ -673,7 +673,7 @@ reserva su espacio antes de cargar, así el resto del hero no salta.
 
 ## 36. Qué se verifica solo de todo esto
 
-45 comprobaciones nuevas en `tests/flujo-pedido.js`, sobre las 40 que ya había:
+47 comprobaciones nuevas en `tests/flujo-pedido.js`, sobre las 40 que ya había:
 
 - El sello ya no está y el buscador ocupa su lugar
 - Escribir en el nav filtra la grilla y el otro campo repite el texto; borrar en
@@ -899,3 +899,23 @@ En el extremo la flecha **se apaga, no se quita**. Si desapareciera, la otra
 cambiaría de sitio y habría que volver a buscarla — un objetivo que se mueve es
 un objetivo que se falla (Fitts). Y solo existen si hay a dónde ir: con un solo
 banner cargado no aparecen dos botones que no hacen nada.
+
+## 42. La fila del distrito, cerrada la vista previa
+
+El selector de distrito vive fuera de la vista previa desde el punto 23, para que
+el costo de envío se vea siempre. Con la vista previa **abierta** se leía como su
+continuación. **Cerrada** no: quedaba un rectángulo de fondo más claro flotando
+dentro de una barra negra a sangre, con dos bordes verticales que no coincidían
+con nada. Medido en 1707 px: la caja arrancaba en 264 y la barra en 0.
+
+Era `max-width: var(--max)` con fondo propio. Ahora el fondo va a sangre y el
+relleno lateral reproduce el centrado del contenedor de al lado
+—`max(20px, calc((100% - var(--max)) / 2 + 20px))`— así que la etiqueta "Tu
+distrito" arranca exactamente donde arranca el total, sin necesitar un envoltorio
+extra en el marcado.
+
+De paso, el desplegable tenía 1180 px de ancho para mostrar un nombre de
+distrito. Se le puso tope de 440; en móvil sigue estirándose a lo que haya.
+
+Lo comprueba la prueba: la fila ocupa el ancho de la barra y arranca a la misma
+altura que el total.

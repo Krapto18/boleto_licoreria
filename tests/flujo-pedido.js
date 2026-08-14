@@ -364,6 +364,23 @@ async function accesibilidad(browser) {
       ok(await p.isVisible('#distritoSel'),
          'el selector sigue visible con la vista previa cerrada');
 
+      /* Con la vista previa abierta el distrito se lee como su
+         continuación; cerrada, quedaba un rectángulo más claro flotando
+         dentro de la barra, con dos bordes verticales que no coincidían
+         con nada. El fondo va a sangre y el contenido alineado con el
+         total, que es la fila de al lado. */
+      const caja = await p.evaluate(() => {
+        const d = document.querySelector('#distritoCaja').getBoundingClientRect();
+        const bar = document.querySelector('#bar').getBoundingClientRect();
+        const lbl = document.querySelector('.distrito__lbl').getBoundingClientRect();
+        const peek = document.querySelector('#peek').getBoundingClientRect();
+        return { sobra: Math.round(d.width - bar.width), desalineado: Math.round(lbl.left - peek.left) };
+      });
+      ok(caja.sobra === 0,
+         `la fila del distrito ocupa el ancho de la barra (sobra ${caja.sobra}px)`);
+      ok(Math.abs(caja.desalineado) <= 6,
+         `y arranca a la misma altura que el total (${caja.desalineado}px de diferencia)`);
+
       const href = decodeURIComponent(await p.getAttribute('#barWa', 'href'));
       ok(/falta sumar el delivery/i.test(href),
          'el mensaje avisa que al total le falta el delivery');

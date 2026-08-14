@@ -665,6 +665,49 @@ async function carruseles(browser) {
   ok(punto.width >= 44 && punto.height >= 44,
      `los puntos se tocan a ${Math.round(punto.width)}x${Math.round(punto.height)} aunque se dibujen a 9`);
 
+  /* ── Las flechas ──────────────────────────────────────────
+     Con el dedo se desliza; en escritorio no hay dedo y los puntos
+     son un objetivo chico para "la siguiente". En los extremos la
+     flecha se apaga en vez de quitarse: si desapareciera, la otra
+     cambiaría de sitio y habría que volver a buscarla. */
+  await p.evaluate(() => {
+    document.documentElement.style.scrollBehavior = 'auto';
+    document.querySelector('#promo').scrollIntoView({ block: 'start' });
+  });
+  await p.waitForTimeout(400);
+
+  const caja = await p.locator('#sig1').boundingBox();
+  ok(caja.width >= 44 && caja.height >= 44,
+     `las flechas miden ${Math.round(caja.width)}x${Math.round(caja.height)}`);
+  ok(await p.evaluate(() => document.querySelector('#ant1').disabled),
+     'en el primer banner, la flecha de atrás está apagada');
+
+  await p.click('#sig1');
+  await p.waitForTimeout(700);
+  const tras = await p.evaluate(() => ({
+    i: [...document.querySelectorAll('#puntos1 .punto')]
+         .findIndex((b) => b.getAttribute('aria-selected') === 'true'),
+    ant: document.querySelector('#ant1').disabled
+  }));
+  ok(tras.i === 1 && !tras.ant,
+     'la flecha pasa al siguiente banner y reactiva la de atrás');
+
+  await p.click('#ant1');
+  await p.waitForTimeout(700);
+  ok(await p.evaluate(() => document.querySelector('#ant1').disabled),
+     'y vuelve al primero, donde se apaga de nuevo');
+
+  /* Lo único que sobrevivió de la tarjeta de promoción: filtrar el
+     catálogo a los productos que llevan la Coca Cola gratis. */
+  await p.click('#promoBtn');
+  await p.waitForTimeout(800);
+  const promo = await p.evaluate(() => ({
+    n: document.querySelectorAll('.card').length,
+    conPromo: PRODUCTOS.filter((x) => x.promo).length
+  }));
+  ok(promo.n > 0 && promo.n === promo.conPromo,
+     `"Ver los que aplican" filtra a los ${promo.conPromo} productos con la promoción`);
+
   await ctx.close();
 }
 

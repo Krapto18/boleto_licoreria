@@ -673,7 +673,7 @@ reserva su espacio antes de cargar, así el resto del hero no salta.
 
 ## 36. Qué se verifica solo de todo esto
 
-39 comprobaciones nuevas en `tests/flujo-pedido.js`, sobre las 40 que ya había:
+45 comprobaciones nuevas en `tests/flujo-pedido.js`, sobre las 40 que ya había:
 
 - El sello ya no está y el buscador ocupa su lugar
 - Escribir en el nav filtra la grilla y el otro campo repite el texto; borrar en
@@ -696,6 +696,8 @@ reserva su espacio antes de cargar, así el resto del hero no salta.
   catálogo y seguir escribiendo no mueve la página — se escribe tecla por tecla,
   porque con `fill()` el defecto no aparecía
 - Volver a entrar arranca en el inicio, y un enlace con ancla sigue mandando
+- Las flechas del carrusel miden 44 px, pasan de banner, se apagan en los
+  extremos, y "Ver los que aplican" filtra el catálogo a los productos en promoción
 
 Los carruseles se prueban **inyectando banners en la respuesta**, porque la base
 todavía no tiene ninguno cargado. Sin eso, la función quedaría sin probar hasta
@@ -864,3 +866,36 @@ nunca veía el titular ni el botón de WhatsApp del hero: medido, volvía a
 **2567 px**, tres pantallas abajo, directo a los banners. Se apaga la
 restauración y se arranca arriba. Si el enlace trae un ancla se respeta: ahí el
 destino lo pidió quien mandó el enlace, no el navegador.
+
+## 41. Los carruseles son la sección de promoción
+
+Antes había dos cosas anunciando lo mismo: una tarjeta hecha a mano —"Coca Cola
+1.5 L gratis"— y, encima, los banners del propio cliente diciendo exactamente eso
+con sus fotos y sus precios. Dos anuncios de la misma promoción se restan en vez
+de sumarse. Los carruseles pasan a ocupar esa sección y la tarjeta se va.
+
+El `id="promo"` se queda: es el destino del enlace "Promoción" del menú, y ahora
+apunta a donde están las promociones de verdad. Lo único que sobrevive de la
+tarjeta es **"Ver los productos que aplican"**, que filtra el catálogo a los 15
+productos con la Coca Cola gratis. Un banner anuncia; ese botón lleva a comprarlo,
+y no tenía otro sitio donde vivir.
+
+La sección entera se rinde solo si hay banners cargados: sin promociones no queda
+un título flotando sobre nada.
+
+**Las imágenes entran.** Las piezas del cliente son casi cuadradas (4:3) y a todo
+el ancho un solo banner medía **885 px de alto** — se comía la pantalla entera y
+había que pasar dos afiches a scroll antes de ver un producto. Acotadas a 560 px
+de ancho se leen como lo que son, un afiche, y entran los dos con el catálogo
+asomando debajo. Medido en un móvil de 390: el catálogo pasó de estar a 2172 px
+del inicio a estar a **1839**, con la sección de promoción completa por delante.
+
+**Flechas.** Deslizar con el dedo ya funcionaba, pero en escritorio no hay dedo y
+los puntos son un objetivo chico para "la siguiente". Van sobre la foto, que es
+donde se las busca (Ley de Jakob), miden 44 px y son marinas: el rojo es de la
+marca y el verde está reservado para WhatsApp (punto 3).
+
+En el extremo la flecha **se apaga, no se quita**. Si desapareciera, la otra
+cambiaría de sitio y habría que volver a buscarla — un objetivo que se mueve es
+un objetivo que se falla (Fitts). Y solo existen si hay a dónde ir: con un solo
+banner cargado no aparecen dos botones que no hacen nada.

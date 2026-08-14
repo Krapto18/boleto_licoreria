@@ -643,6 +643,10 @@
 
     const primera = (i) => (g === 1 && i === 0 ? 'eager' : 'lazy');
 
+    /* La sección entera se rinde en cuanto uno de los dos carruseles
+       tiene banners: sin promociones cargadas no hay título flotando
+       sobre nada. */
+    $('#promo').hidden = false;
     $('#bannersSec' + g).hidden = false;
     $('#pista' + g).innerHTML = banners.map((b, i) => b.url
       ? `<a class="banner" href="${esc(b.url)}"><img src="${esc(b.img)}" alt="${esc(b.alt || '')}" loading="${primera(i)}"></a>`
@@ -653,20 +657,43 @@
 
     const pista = $('#carrusel' + g);
     const puntos = $('#puntos' + g);
+    const ant = $('#ant' + g), sig = $('#sig' + g);
+
     puntos.innerHTML = banners.map((_, i) =>
       `<button class="punto" role="tab" data-i="${i}" aria-selected="${i === 0}" aria-label="Promoción ${i + 1}"></button>`
     ).join('');
 
+    /* Las flechas solo existen si hay a dónde ir. Se rinden ocultas y
+       se muestran acá: si el dueño deja un solo banner, no aparecen dos
+       botones que no hacen nada. */
+    ant.hidden = sig.hidden = false;
+
+    const irA = (i) => pista.scrollTo({
+      left: pista.clientWidth * Math.max(0, Math.min(i, banners.length - 1)),
+      behavior: 'smooth'
+    });
+    const actual = () => Math.round(pista.scrollLeft / pista.clientWidth);
+
     puntos.addEventListener('click', (e) => {
       const b = e.target.closest('.punto'); if (!b) return;
-      pista.scrollTo({ left: pista.clientWidth * +b.dataset.i, behavior: 'smooth' });
+      irA(+b.dataset.i);
     });
+    ant.addEventListener('click', () => irA(actual() - 1));
+    sig.addEventListener('click', () => irA(actual() + 1));
 
-    pista.addEventListener('scroll', () => {
-      const i = Math.round(pista.scrollLeft / pista.clientWidth);
+    /* En los extremos la flecha se apaga en vez de desaparecer: si se
+       quitara, la otra flecha cambiaría de sitio y habría que volver a
+       buscarla con el dedo. */
+    function marcar() {
+      const i = actual();
       puntos.querySelectorAll('.punto').forEach((p, n) =>
         p.setAttribute('aria-selected', n === i));
-    }, { passive: true });
+      ant.disabled = i <= 0;
+      sig.disabled = i >= banners.length - 1;
+    }
+
+    pista.addEventListener('scroll', marcar, { passive: true });
+    marcar();
   }
 
   /* ══════════════════════════════════════════════════════════

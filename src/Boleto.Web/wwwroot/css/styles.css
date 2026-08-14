@@ -453,17 +453,6 @@ a {
             text-decoration-color: var(--rojo)
         }
 
-.promo__aside {
-    display: grid;
-    justify-items: center;
-    gap: 14px
-}
-
-    /* El sello mide 170: a 48 el icono se veía suelto encima. */
-    .promo__aside .ico {
-        width: 62px;
-        height: 62px
-    }
 
 /* ══════════════════════════════════════════════════════════════
    ICONOS DE MARCA
@@ -519,6 +508,29 @@ a {
     margin-bottom: 28px
 }
 
+/* Los carruseles van centrados, así que su encabezado también. */
+.sec__head--c {
+    text-align: center
+}
+
+.sec__ico {
+    color: var(--tx-tenue);
+    margin: 0 auto 14px
+}
+
+/* La sección de promoción es la de los carruseles: el fondo se
+   diferencia apenas para separarla del hero sin pelearle. */
+.sec--promo {
+    padding: 54px 0 60px;
+    background: rgba(8,16,58,.5);
+    border-block: 1px solid var(--marino-3)
+}
+
+.promo__pie {
+    text-align: center;
+    margin-top: 26px
+}
+
 .sec__h {
     font-size: clamp(2.2rem,5vw,3.4rem);
     margin-top: 10px
@@ -527,87 +539,6 @@ a {
 .sec__p {
     color: var(--tx-tenue);
     max-width: 54ch
-}
-
-.promo {
-    background: var(--crema);
-    color: var(--tx-oscuro);
-    border-radius: var(--r-lg);
-    padding: clamp(30px,4.5vw,54px);
-    display: grid;
-    grid-template-columns: 1fr auto;
-    gap: 34px;
-    align-items: center
-}
-
-.promo__h {
-    font-size: clamp(2.1rem,5.2vw,3.4rem);
-    margin-top: 12px
-}
-
-    .promo__h em {
-        font-style: normal;
-        color: var(--rojo)
-    }
-
-.promo__p {
-    color: var(--tx-gris);
-    margin-bottom: 24px;
-    font-size: 1.02rem
-}
-
-    .promo__p b {
-        color: var(--tx-oscuro);
-        font-weight: 600
-    }
-
-.seal {
-    width: 170px;
-    height: 170px;
-    border-radius: 50%;
-    flex-shrink: 0;
-    background: var(--marino);
-    color: var(--crema);
-    border: 3px double var(--rojo);
-    display: grid;
-    place-content: center;
-    text-align: center;
-    transform: rotate(-8deg)
-}
-
-    .seal em {
-        display: block;
-        font-family: var(--display);
-        font-style: normal;
-        font-weight: 700;
-        font-size: 2.1rem;
-        line-height: 1
-    }
-
-    .seal b {
-        display: block;
-        margin-top: 6px;
-        font-size: .7rem;
-        font-weight: 500;
-        letter-spacing: .24em;
-        text-transform: uppercase;
-        color: var(--rojo)
-    }
-
-@media(max-width:760px) {
-    .promo {
-        grid-template-columns: 1fr;
-        justify-items: start
-    }
-
-        .promo > div:last-child {
-            justify-self: center
-        }
-
-    .seal {
-        width: 140px;
-        height: 140px
-    }
 }
 
 /* ── Buscador y filtros ───────────────────────────────────── */
@@ -1818,16 +1749,23 @@ img.i-wa {
    dedo y con teclado, y no bloquea el scroll de la página.
    ══════════════════════════════════════════════════════════════ */
 .banners {
-    padding: 20px 0 0
+    /* Las piezas del cliente son casi cuadradas (4:3). A todo el ancho
+       de la página un solo banner medía 885 px de alto y se comía la
+       pantalla entera: el cliente tenía que pasar dos banners a scroll
+       antes de ver un producto. Acotado, se lee como lo que es —un
+       afiche— y entran los dos con el catálogo asomando debajo. */
+    max-width: 560px;
+    margin-inline: auto
 }
 
 /* El segundo va pegado al primero. Solo la separación justa para que se
    lean como dos pistas y no como una sola que se partió. */
 .banners--abajo {
-    padding: 16px 0 0
+    margin-top: 18px
 }
 
 .carrusel {
+    position: relative;
     overflow-x: auto;
     overflow-y: hidden;
     scroll-snap-type: x mandatory;
@@ -1857,6 +1795,53 @@ img.i-wa {
         height: auto;
         display: block
     }
+
+/* ── Flechas ──────────────────────────────────────────────────
+   El deslizamiento con el dedo ya funcionaba, pero en escritorio no
+   hay dedo y los puntos son un objetivo chico para "la siguiente".
+   Las flechas van sobre la foto, que es donde se las busca (Jakob),
+   y son marinas y no rojas ni verdes: el rojo es de la marca y el
+   verde está reservado para WhatsApp. */
+.flecha {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    background: rgba(0,6,37,.72);
+    border: 1px solid rgba(247,241,227,.3);
+    color: var(--crema);
+    backdrop-filter: blur(6px);
+    transition: background .18s, opacity .18s;
+    z-index: 2
+}
+
+    .flecha:hover {
+        background: rgba(0,6,37,.92)
+    }
+
+    /* En el extremo se apaga, no se quita: si desapareciera, la otra
+       flecha cambiaría de sitio y habría que volver a buscarla. */
+    .flecha:disabled {
+        opacity: .3;
+        cursor: default
+    }
+
+    .flecha svg {
+        width: 20px;
+        height: 20px
+    }
+
+.flecha--ant {
+    left: 10px
+}
+
+.flecha--sig {
+    right: 10px
+}
 
 .carrusel__puntos {
     display: flex;

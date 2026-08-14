@@ -196,10 +196,16 @@ aparecería en el total del cliente.
 Cuatro cambios pedidos por el dueño. Están hechos y documentados con lo que
 cuesta cada uno en `docs/decisiones-ihc.md`, nivel 6.
 
-**Dos carruseles de cinco banners**, uno debajo del otro. Vienen con cuatro
-piezas del propio cliente —sus artes de Instagram, recortadas a 4:3— sembradas
+**Dos carruseles de cinco banners** son la sección de promoción: reemplazaron a
+una tarjeta hecha a mano que anunciaba lo mismo que los banners del cliente.
+Vienen con cuatro piezas suyas —artes de Instagram recortadas a 4:3— sembradas
 solo si la tabla está vacía, igual que las zonas. El dueño las reemplaza desde el
-panel. Cuesta scroll: los diez
+panel.
+
+Los banners van acotados a 560 px de ancho: a todo el ancho, una pieza 4:3 medía
+885 px de alto y había que pasar dos afiches a scroll antes de ver un producto.
+Llevan flechas además del deslizamiento, que se apagan en los extremos en vez de
+quitarse — un objetivo que se mueve es un objetivo que se falla. Cuesta scroll: los diez
 llenos meten 380 px entre el hero y el catálogo en un móvil de 390. Se amortigua
 con carga diferida de los nueve banners que no son el primero y con el enlace
 "Catálogo" del menú, que salta por encima de los dos. El panel los muestra como

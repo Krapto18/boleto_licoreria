@@ -119,57 +119,66 @@
   </div>
 </header>
 
-<!-- ══════════ BANNERS ══════════
+<!-- ══════════ PROMOCIONES ══════════
+     Los dos carruseles SON la sección de promoción. Antes había además
+     una tarjeta hecha a mano que anunciaba la Coca Cola gratis: decía
+     lo mismo que dicen los banners del propio cliente, con sus fotos y
+     sus precios. Dos anuncios de la misma promoción se restan.
+
+     El id="promo" se queda acá: es el destino del enlace "Promoción"
+     del menú, y ahora apunta a donde están las promociones de verdad.
+
      Cada carrusel se rinde solo si tiene banners cargados. Sin
-     imágenes, no aparece ninguno de los dos, y si solo hay banners
-     arriba, abajo no queda un hueco.
-
-     Van uno debajo del otro porque así los quiere el cliente. Cuesta
-     scroll: con los diez llenos, el catálogo queda más abajo de lo que
-     conviene. Lo que se hace para amortiguarlo es que el segundo cargue
-     en diferido y que el enlace "Catálogo" del menú siga saltando por
-     encima de los dos. -->
-<section class="banners" id="bannersSec1" hidden>
+     imágenes no aparece ninguno de los dos —ni el título—, y si solo
+     hay banners arriba, abajo no queda un hueco. -->
+<section class="sec sec--promo" id="promo" hidden>
   <div class="wrap">
-    <div class="carrusel" id="carrusel1" role="region" aria-roledescription="carrusel" aria-label="Promociones">
-      <div class="carrusel__pista" id="pista1"></div>
-    </div>
-    <div class="carrusel__puntos" id="puntos1" role="tablist" aria-label="Ir a promoción"></div>
-  </div>
-</section>
-
-<section class="banners banners--abajo" id="bannersSec2" hidden>
-  <div class="wrap">
-    <div class="carrusel" id="carrusel2" role="region" aria-roledescription="carrusel" aria-label="Más promociones">
-      <div class="carrusel__pista" id="pista2"></div>
-    </div>
-    <div class="carrusel__puntos" id="puntos2" role="tablist" aria-label="Ir a promoción"></div>
-  </div>
-</section>
-
-<!-- ══════════ PROMO ══════════ -->
-<section class="sec" id="promo">
-  <div class="wrap">
-    <div class="promo">
-      <div>
-        <p class="eyebrow eyebrow--red">Hasta agotar stock</p>
-        <h2 class="display promo__h">Coca&nbsp;Cola 1.5&nbsp;L<br><em>gratis</em></h2>
-        <svg class="flourish flourish--sm" viewBox="0 0 340 16" aria-hidden="true">
-          <path d="M14 8h140" stroke="currentColor" stroke-width="1.6"/>
-          <path d="M186 8h140" stroke="currentColor" stroke-width="1.6"/>
-          <path d="M170 1.5l6.5 6.5-6.5 6.5-6.5-6.5z" fill="currentColor"/>
-          <circle cx="8" cy="8" r="4" fill="currentColor"/><circle cx="332" cy="8" r="4" fill="currentColor"/>
-        </svg>
-        <p class="promo__p">Por la compra de cualquier <b>whisky</b> o <b>ron</b>.</p>
-        <button class="btn btn--line btn--dark" id="promoBtn">Ver los que aplican</button>
-      </div>
+    <div class="sec__head sec__head--c">
       @* El icono "acompañante" del kit: una botella con un más. Es
-         literalmente de lo que trata esta promoción. *@
-      <div class="promo__aside" aria-hidden="true">
-        <i class="ico ico--acompanante ico--xl"></i>
-        <span class="seal"><em>Gratis</em><b>1.5 L</b></span>
-      </div>
+         literalmente de lo que tratan estas promociones. *@
+      <i class="ico ico--acompanante ico--xl sec__ico" aria-hidden="true"></i>
+      <p class="eyebrow eyebrow--red eyebrow--c">Hasta agotar stock</p>
+      <h2 class="display sec__h">Promociones de hoy</h2>
+      <svg class="flourish flourish--c" viewBox="0 0 340 16" aria-hidden="true">
+        <path d="M14 8h140" stroke="currentColor" stroke-width="1.6"/>
+        <path d="M186 8h140" stroke="currentColor" stroke-width="1.6"/>
+        <path d="M170 1.5l6.5 6.5-6.5 6.5-6.5-6.5z" fill="currentColor"/>
+        <circle cx="8" cy="8" r="4" fill="currentColor"/><circle cx="332" cy="8" r="4" fill="currentColor"/>
+      </svg>
     </div>
+
+    <div class="banners" id="bannersSec1" hidden>
+      <div class="carrusel" id="carrusel1" role="region" aria-roledescription="carrusel" aria-label="Promociones">
+        <div class="carrusel__pista" id="pista1"></div>
+        <button class="flecha flecha--ant" id="ant1" type="button" aria-label="Promoción anterior" hidden>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
+        </button>
+        <button class="flecha flecha--sig" id="sig1" type="button" aria-label="Promoción siguiente" hidden>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>
+        </button>
+      </div>
+      <div class="carrusel__puntos" id="puntos1" role="tablist" aria-label="Ir a promoción"></div>
+    </div>
+
+    <div class="banners banners--abajo" id="bannersSec2" hidden>
+      <div class="carrusel" id="carrusel2" role="region" aria-roledescription="carrusel" aria-label="Más promociones">
+        <div class="carrusel__pista" id="pista2"></div>
+        <button class="flecha flecha--ant" id="ant2" type="button" aria-label="Promoción anterior" hidden>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
+        </button>
+        <button class="flecha flecha--sig" id="sig2" type="button" aria-label="Promoción siguiente" hidden>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>
+        </button>
+      </div>
+      <div class="carrusel__puntos" id="puntos2" role="tablist" aria-label="Ir a promoción"></div>
+    </div>
+
+    @* Lo único de la tarjeta anterior que hacía algo: filtra el catálogo
+       a los productos que llevan la Coca Cola gratis. Un banner anuncia;
+       esto lleva a comprarlo. *@
+    <p class="promo__pie">
+      <button class="btn btn--line" id="promoBtn">Ver los productos que aplican</button>
+    </p>
   </div>
 </section>
 

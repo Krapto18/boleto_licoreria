@@ -75,11 +75,24 @@
 <header class="hero">
   <div class="wrap">
     <div class="cartel">
-      @* SLOT: logotipo sin el "24". Si el archivo no existe, cae al texto. *@
-      <img src="~/assets/logotipo.svg" alt="@Model.Catalogo.Config.Tienda"
-           class="cartel__logo" asp-append-version="true"
-           onerror="this.replaceWith(Object.assign(document.createElement('p'),{className:'eyebrow',textContent:'@Model.Catalogo.Config.Tienda'}))">
-      <h1 class="display">A la hora<br>que sea</h1>
+      @* El logo del negocio ocupa el lugar del titular. Es decisión del
+         cliente: un logotipo no dice a qué vino uno a esta página como lo
+         decía "A la hora que sea".
+
+         Lo que se hace para que cueste lo menos posible: sigue siendo el
+         <h1> de la página —el documento no se queda sin encabezado— y el
+         texto alternativo carga la propuesta de valor, que es lo que leen
+         Google y un lector de pantalla. El párrafo de abajo la repite en
+         pantalla para quien sí ve la imagen.
+
+         Si el archivo no carga, cae al titular de texto: un h1 vacío
+         dejaría la página sin encabezado. *@
+      <h1 class="cartel__marca">
+        <img src="~/assets/logo.webp" width="1152" height="630" fetchpriority="high"
+             alt="@Model.Catalogo.Config.Tienda · licorería abierta las 24 horas, todos los días"
+             asp-append-version="true"
+             onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'display cartel__marca-txt',textContent:'A la hora que sea'}))">
+      </h1>
       <svg class="flourish" viewBox="0 0 340 16" aria-hidden="true">
         <path d="M14 8h140" stroke="currentColor" stroke-width="1.6"/>
         <path d="M186 8h140" stroke="currentColor" stroke-width="1.6"/>
@@ -99,21 +112,31 @@
   </div>
 </header>
 
-<!-- ══════════ BANNERS · CARRUSEL 1 ══════════
+<!-- ══════════ BANNERS ══════════
      Cada carrusel se rinde solo si tiene banners cargados. Sin
-     imágenes, no aparece ninguno de los dos.
+     imágenes, no aparece ninguno de los dos, y si solo hay banners
+     arriba, abajo no queda un hueco.
 
-     Los dos no van juntos a propósito: diez banners de 1200×500 uno
-     debajo del otro empujan el catálogo fuera de la primera pantalla,
-     que es lo que el cliente vino a ver. El primero va antes del
-     catálogo y el segundo después, así la segunda tanda aparece cuando
-     ya terminó de mirar productos. -->
+     Van uno debajo del otro porque así los quiere el cliente. Cuesta
+     scroll: con los diez llenos, el catálogo queda más abajo de lo que
+     conviene. Lo que se hace para amortiguarlo es que el segundo cargue
+     en diferido y que el enlace "Catálogo" del menú siga saltando por
+     encima de los dos. -->
 <section class="banners" id="bannersSec1" hidden>
   <div class="wrap">
     <div class="carrusel" id="carrusel1" role="region" aria-roledescription="carrusel" aria-label="Promociones">
       <div class="carrusel__pista" id="pista1"></div>
     </div>
     <div class="carrusel__puntos" id="puntos1" role="tablist" aria-label="Ir a promoción"></div>
+  </div>
+</section>
+
+<section class="banners banners--abajo" id="bannersSec2" hidden>
+  <div class="wrap">
+    <div class="carrusel" id="carrusel2" role="region" aria-roledescription="carrusel" aria-label="Más promociones">
+      <div class="carrusel__pista" id="pista2"></div>
+    </div>
+    <div class="carrusel__puntos" id="puntos2" role="tablist" aria-label="Ir a promoción"></div>
   </div>
 </section>
 
@@ -162,16 +185,6 @@
     <p class="count" id="count" role="status"></p>
     <div class="grid" id="grid"></div>
     <p class="empty" id="empty" hidden>No encontramos eso. Escríbenos y lo conseguimos.</p>
-  </div>
-</section>
-
-<!-- ══════════ BANNERS · CARRUSEL 2 ══════════ -->
-<section class="banners banners--abajo" id="bannersSec2" hidden>
-  <div class="wrap">
-    <div class="carrusel" id="carrusel2" role="region" aria-roledescription="carrusel" aria-label="Más promociones">
-      <div class="carrusel__pista" id="pista2"></div>
-    </div>
-    <div class="carrusel__puntos" id="puntos2" role="tablist" aria-label="Ir a promoción"></div>
   </div>
 </section>
 

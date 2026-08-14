@@ -79,11 +79,18 @@ entre al abrir y que el botón mida 44 px. Y que el buscador del catálogo
 siga a la vista en móvil **sin** abrir el menú. Los dos campos de búsqueda
 se comprueban sincronizados en los dos sentidos.
 
-**Los dos carruseles.** Cada banner cae en el suyo, cada carrusel tiene
-sus propios puntos, mover uno no marca los del otro, y los puntos se tocan
-a 44 px aunque se dibujen a 9. Los banners se **inyectan en la respuesta**
-porque la base todavía no tiene ninguno: sin eso la función quedaría sin
-probar hasta que el dueño suba el primero, que es tarde para enterarse.
+**El logo del hero.** Reemplazó al titular, así que se comprueba que siga
+siendo el `<h1>`, que sea el único, que su texto alternativo mencione las
+24 horas y que la imagen **cargue de verdad**. Si fallara, el encabezado
+de la página quedaría vacío y nadie se enteraría desde fuera.
+
+**Los dos carruseles.** Cada banner cae en el suyo, el segundo va debajo
+del primero, cada carrusel tiene sus propios puntos, mover uno no marca
+los del otro, los puntos se tocan a 44 px aunque se dibujen a 9, y el
+enlace "Catálogo" sigue saltando por encima de los dos. Los banners se
+**inyectan en la respuesta** porque la base todavía no tiene ninguno: sin
+eso la función quedaría sin probar hasta que el dueño suba el primero, que
+es tarde para enterarse.
 
 Detalle de cada corrección en `docs/decisiones-ihc.md`, niveles 5 y 6.
 

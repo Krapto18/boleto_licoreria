@@ -1714,12 +1714,34 @@ img.i-wa {
 /* ══════════════════════════════════════════════════════════════
    LOGOTIPO DEL HERO
    ══════════════════════════════════════════════════════════════ */
-.cartel__logo {
-    height: clamp(38px,7vw,58px);
-    width: auto;
-    margin: 0 auto 6px;
-    display: block
+/* ══════════════════════════════════════════════════════════════
+   LOGO DEL HERO
+   El logo trae su propio fondo azul marino —#000828, el mismo del
+   sitio— y letras crema. Sobre la chapa crema queda como una placa,
+   que es como se lee bien: recortarle el fondo dejaría letras crema
+   sobre crema, invisibles.
+   ══════════════════════════════════════════════════════════════ */
+/* Con el elemento delante: `.cartel h1` de arriba pesa más que una
+   clase sola y le devolvería su margen de titular de texto. */
+.cartel h1.cartel__marca {
+    margin: 6px auto 2px;
+    line-height: 0
 }
+
+    .cartel__marca img {
+        width: 100%;
+        max-width: 520px;
+        height: auto;
+        border-radius: 14px;
+        /* El ancho y el alto van también en el HTML: la imagen manda el
+           alto del hero y sin reservarlo el titular salta al cargar. */
+    }
+
+    /* Si el archivo no carga, vuelve el titular de texto. */
+    .cartel__marca-txt {
+        display: block;
+        font-size: clamp(3rem,8.4vw,5.6rem)
+    }
 
 /* ══════════════════════════════════════════════════════════════
    CARRUSEL DE BANNERS
@@ -1730,10 +1752,10 @@ img.i-wa {
     padding: 20px 0 0
 }
 
-/* El segundo carrusel va después del catálogo. Necesita aire arriba y
-   abajo: ahí ya no separa dos secciones, se mete entre ellas. */
+/* El segundo va pegado al primero. Solo la separación justa para que se
+   lean como dos pistas y no como una sola que se partió. */
 .banners--abajo {
-    padding: 10px 0 34px
+    padding: 16px 0 0
 }
 
 .carrusel {

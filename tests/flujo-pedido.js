@@ -400,6 +400,26 @@ async function navegacion(browser) {
 
     ok(await p.locator('.status').count() === 0,
        'el sello "Abierto ahora" ya no está en el nav');
+
+    /* El titular del hero es ahora el logo del negocio. Una imagen no
+       dice a qué vino uno; lo que impide que la página se quede muda
+       es que siga siendo el <h1> y que el texto alternativo cargue la
+       propuesta de valor — es lo que leen Google y un lector. */
+    const marca = await p.evaluate(() => {
+      const h = [...document.querySelectorAll('h1')];
+      const img = document.querySelector('.cartel__marca img');
+      return {
+        h1s: h.length,
+        dentro: !!(img && img.closest('h1')),
+        alt: (img?.getAttribute('alt') || '').trim(),
+        cargo: !!(img && img.complete && img.naturalWidth > 0)
+      };
+    });
+    ok(marca.h1s === 1 && marca.dentro,
+       'el logo del hero sigue siendo el h1 de la página');
+    ok(/24 horas/i.test(marca.alt),
+       `el texto alternativo carga la propuesta de valor ("${marca.alt}")`);
+    ok(marca.cargo, 'el logo del hero carga de verdad (si no, el h1 queda vacío)');
     ok(await p.isVisible('#qNav'), 'el buscador ocupa su lugar en el nav');
     ok(!(await p.isVisible('#burger')), 'en escritorio no aparece la hamburguesa');
     ok(await p.isVisible('.nav__links a[href="#catalogo"]') &&
@@ -525,8 +545,20 @@ async function carruseles(browser) {
     const y = (s) => document.querySelector(s).getBoundingClientRect().top + window.scrollY;
     return { arriba: y('#bannersSec1'), cat: y('#catalogo'), abajo: y('#bannersSec2') };
   });
-  ok(orden.arriba < orden.cat && orden.abajo > orden.cat,
-     'uno antes del catálogo y otro después: el catálogo no queda enterrado');
+  ok(orden.arriba < orden.abajo && orden.abajo < orden.cat,
+     'el segundo carrusel va justo debajo del primero, antes del catálogo');
+
+  /* Diez banners empujan el catálogo hacia abajo. El enlace del menú
+     tiene que seguir saltándolos: es la salida rápida del que vino a
+     comprar y no a mirar promociones. */
+  await p.click('#burger');
+  await p.waitForTimeout(250);
+  await p.click('#navMenu a[href="#catalogo"]');
+  await p.waitForTimeout(900);
+  ok(await p.evaluate(() => {
+    const r = document.querySelector('#catalogo').getBoundingClientRect();
+    return r.top < window.innerHeight / 2;
+  }), 'el enlace "Catálogo" salta por encima de los dos carruseles');
 
   /* Antes los puntos se buscaban con un querySelectorAll global.
      Con dos pistas, mover una habría marcado los puntos de la otra. */

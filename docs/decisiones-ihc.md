@@ -542,21 +542,31 @@ recomienda la heurística. Están hechos igual —es su web y es su decisión—
 que se documenta acá es qué cuesta cada uno y qué se hizo para que costara lo
 menos posible.
 
-## 32. Dos carruseles de cinco, y por qué no van juntos
+## 32. Dos carruseles de cinco, uno debajo del otro
 
-Lo pedido: dos carruseles de cinco banners en lugar de uno.
+Lo pedido: dos carruseles de cinco banners en lugar de uno, **el segundo debajo
+del primero**.
 
-Puestos uno debajo del otro serían diez imágenes de 1200×500 entre el hero y el
-catálogo. Medido en un móvil de 390 px, cada banner ocupa 146 px de alto más los
-puntos: el catálogo se iba **a más de tres pantallas de scroll**. El cliente
-entra a comprar y lo primero que encuentra son diez avisos.
+Lo que cuesta, medido en un móvil de 390 px: cada banner de 1200×500 ocupa 146 px
+de alto más 44 de puntos. Los dos carruseles llenos meten **380 px entre el hero
+y el catálogo**, y el catálogo pasa a estar a dos pantallas y media de scroll
+desde arriba. El cliente entra a comprar y lo primero que encuentra son avisos.
 
-Se separaron: **el primero antes del catálogo, el segundo después**. La segunda
-tanda aparece cuando ya terminó de mirar productos, que además es cuando una
-promoción tiene más sentido — ya sabe los precios. El catálogo no se mueve de
-sitio y los diez banners siguen estando.
+Se propuso separarlos —uno antes del catálogo y otro después— y el cliente los
+quiere juntos. Van juntos.
 
-Si el dueño los quiere pegados, es mover una sección en `Index.cshtml`.
+Lo que se hace para amortiguarlo:
+
+| | |
+|---|---|
+| **Carga diferida** | Solo el primer banner del primer carrusel se pide con prioridad. Los otros nueve son `loading="lazy"`: no compiten con lo que hay que ver primero |
+| **El menú salta los dos** | El enlace "Catálogo" lleva directo a la grilla por encima de los banners. Es la salida rápida del que vino a comprar, y se comprueba en la prueba |
+| **Ninguno aparece vacío** | Si el dueño solo llena el de arriba, el de abajo no existe. Sin banners no hay hueco ni puntos |
+
+**Detalle que ya estaba mal y salió acá:** los puntos del carrusel se marcaban
+con un `querySelectorAll('.punto')` global. Con una sola pista funcionaba; con
+dos, desplazar la de abajo habría marcado los puntos de la de arriba. Ahora cada
+carrusel busca los suyos.
 
 **Detalle que ya estaba mal y salió acá:** los puntos del carrusel se marcaban
 con un `querySelectorAll('.punto')` global. Con una sola pista funcionaba; con
@@ -629,9 +639,41 @@ pantallas; devolverla al menú es quitar una clase.
 El panel no es un modal y no atrapa el foco: es un menú desplegable y tabular
 fuera de él es una salida legítima, no un escape.
 
-## 35. Qué se verifica solo de todo esto
+## 35. El logo en lugar del titular
 
-19 comprobaciones nuevas en `tests/flujo-pedido.js`, sobre las 40 que ya había:
+Lo pedido: que el hero muestre el logo del negocio en vez de "A la hora que sea".
+
+Lo que cuesta. Un titular dice a qué vino uno; un logotipo dice quién eres. El
+visitante que llega de una búsqueda y ve un logo tiene que deducir el resto. Y
+si el `<h1>` pasa a ser una imagen, la página se queda sin encabezado de texto:
+Google lee el encabezado para entender de qué trata, y un lector de pantalla lo
+usa para orientar a quien no ve la imagen. Es decisión del cliente y está hecho.
+
+Lo que se hace para que no se pierda nada de eso:
+
+| | |
+|---|---|
+| **Sigue siendo el `<h1>`** | El logo va dentro del encabezado, no lo reemplaza. El documento conserva su estructura y sigue habiendo uno solo |
+| **El `alt` carga el mensaje** | "Boleto Licorería · licorería abierta las 24 horas, todos los días". Es lo que leen Google y el lector de pantalla, y es la frase que antes llevaba el titular |
+| **El párrafo lo repite en pantalla** | "Tienda y WhatsApp abiertos las 24 horas… Son las 9:29 a. m. y estamos atendiendo". Quien sí ve la imagen tampoco se queda sin saber a qué llegó |
+| **Si no carga, vuelve el texto** | Un `onerror` devuelve el titular "A la hora que sea". Un `<h1>` con una imagen rota es un `<h1>` vacío |
+
+**El logo trae su propio fondo.** Es azul marino `#000828` con letras crema — el
+mismo azul del sitio, con dos puntos de diferencia. Sobre la chapa crema del hero
+queda como una placa, y así es como se lee: recortarle el fondo dejaría letras
+crema sobre crema, invisibles. La placa lleva las mismas esquinas redondeadas que
+el resto para que se vea decidida y no pegada.
+
+**Pesaba 194 KB.** El `logo.svg` era un PNG en base64 dentro de un SVG, y el
+base64 infla un tercio. Convertido a WebP sin pérdida: **62 KB**, un 68 % menos,
+sin tocar un solo píxel. Importa porque es el elemento más grande del hero — es
+el que mide el LCP, y esta web se abre desde datos móviles a las tres de la
+mañana. Lleva `width`, `height` y `fetchpriority="high"`: se pide temprano y
+reserva su espacio antes de cargar, así el resto del hero no salta.
+
+## 36. Qué se verifica solo de todo esto
+
+23 comprobaciones nuevas en `tests/flujo-pedido.js`, sobre las 40 que ya había:
 
 - El sello ya no está y el buscador ocupa su lugar
 - Escribir en el nav filtra la grilla y el otro campo repite el texto; borrar en
@@ -640,8 +682,12 @@ fuera de él es una salida legítima, no un escape.
 - En móvil: el botón mide 44, el menú arranca plegado y lo dice, abre, el foco
   entra, Escape cierra y devuelve el foco, elegir cierra
 - El buscador del catálogo se ve sin abrir el menú
-- Cada banner cae en su carrusel, cada carrusel tiene sus puntos, mover uno no
-  marca los del otro, y los puntos se tocan a 44 px
+- El logo del hero es el `<h1>`, es el único, su `alt` menciona las 24 horas y la
+  imagen carga de verdad — si fallara, el encabezado quedaría vacío y nadie se
+  enteraría
+- Cada banner cae en su carrusel, el segundo va debajo del primero, cada uno
+  tiene sus puntos, mover uno no marca los del otro, los puntos se tocan a 44 px
+  y el enlace "Catálogo" salta por encima de los dos
 
 Los carruseles se prueban **inyectando banners en la respuesta**, porque la base
 todavía no tiene ninguno cargado. Sin eso, la función quedaría sin probar hasta

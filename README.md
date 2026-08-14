@@ -191,15 +191,16 @@ fijarla, el separador decimal depende de la cultura del hilo: un `10,5` guardado
 en `es-PE` se releería como `105` en un servidor invariante, y ese número
 aparecería en el total del cliente.
 
-## Navegación y banners
+## Navegación, banners y hero
 
-Tres cambios pedidos por el dueño. Están hechos y documentados con lo que cuesta
-cada uno en `docs/decisiones-ihc.md`, nivel 6.
+Cuatro cambios pedidos por el dueño. Están hechos y documentados con lo que
+cuesta cada uno en `docs/decisiones-ihc.md`, nivel 6.
 
-**Dos carruseles de cinco banners.** Uno antes del catálogo y otro después, no
-los dos juntos: diez imágenes de 1200×500 seguidas dejaban el catálogo a más de
-tres pantallas de scroll en un móvil. El panel los muestra como "carrusel de
-arriba" y "carrusel de abajo", cinco ranuras cada uno.
+**Dos carruseles de cinco banners**, uno debajo del otro. Cuesta scroll: los diez
+llenos meten 380 px entre el hero y el catálogo en un móvil de 390. Se amortigua
+con carga diferida de los nueve banners que no son el primero y con el enlace
+"Catálogo" del menú, que salta por encima de los dos. El panel los muestra como
+"carrusel de arriba" y "carrusel de abajo", cinco ranuras cada uno.
 
 Se persisten en `Tienda.Banners` con formato `ruta|alt|enlace|carrusel`. El
 cuarto campo es nuevo: las líneas guardadas antes caen en el carrusel 1, que es
@@ -218,6 +219,17 @@ Nielsen #6 y es una decisión del cliente, no una recomendación. Se hizo con
 px de objetivo. El buscador del catálogo y el botón de WhatsApp **no** están
 detrás del menú: comprar y escribir no dependen de que el cliente descubra la
 hamburguesa.
+
+**El logo del negocio en lugar del titular del hero.** Un logotipo dice quién
+eres, no a qué viniste. Para que la página no se quede muda, el logo va **dentro
+del `<h1>`** y su texto alternativo lleva la propuesta de valor, que es lo que
+leen Google y un lector de pantalla; el párrafo de abajo la repite en pantalla.
+Si el archivo no carga, un `onerror` devuelve el titular de texto: un `<h1>` con
+una imagen rota es un `<h1>` vacío.
+
+El logo se sirve como `logo.webp` (**62 KB**, sin pérdida) y no como el
+`logo.svg` de 194 KB, que era un PNG en base64 dentro de un SVG. Es el elemento
+que mide el LCP del hero, y esta web se abre desde datos móviles de madrugada.
 
 ## Seguridad del panel
 

@@ -54,6 +54,18 @@ public class Tienda
        segundo carrusel y que el guardado reventara contra la columna. */
     [MaxLength(4000)] public string Banners { get; set; } = "";
 
+    /* ── LOGO DE LA PORTADA ──────────────────────────────────────
+       El que ocupa el titular del hero. Formato: ruta|ancho|alto
+       Ejemplo:  /media/marca/logo-portada.webp|1000|700
+
+       Vacío = se usa el logo oficial del kit, que viene con la app.
+
+       El ancho y el alto se guardan porque esa imagen es el elemento
+       más grande de la primera pantalla: sin declarar su tamaño en el
+       HTML, el hero salta cuando termina de cargar. Se miden al subir,
+       leyendo la cabecera del archivo — no se le piden al dueño. */
+    [MaxLength(220)] public string LogoHero { get; set; } = "";
+
     /* Verificación de edad (Ley N° 28681). */
     public bool Verificar18 { get; set; } = true;
 

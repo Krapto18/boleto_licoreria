@@ -209,6 +209,51 @@ public class IndexModel(CatalogoService svc, IAlmacen almacen, ILogger<IndexMode
         }
     }
 
+    /// <summary>
+    /// Sube el logo de la portada y lo publica. Se mide al vuelo: esa
+    /// imagen es el elemento más grande de la primera pantalla y su
+    /// tamaño tiene que ir declarado en el HTML, o el hero salta cuando
+    /// termina de cargar. No se le pide al dueño lo que se puede leer
+    /// del propio archivo.
+    /// </summary>
+    public async Task<IActionResult> OnPostLogoHeroAsync(IFormFile archivo, CancellationToken ct)
+    {
+        try
+        {
+            int ancho = 0, alto = 0;
+            if (archivo is { Length: > 0 })
+            {
+                await using var flujo = archivo.OpenReadStream();
+                (ancho, alto) = await AlmacenBase.MedirAsync(flujo, ct);
+            }
+
+            var url = await almacen.GuardarAsync(archivo, "marca", "logo-portada", ct);
+            await svc.GuardarLogoHeroAsync(url, ancho, alto, ct);
+            return new JsonResult(new { ok = true, url, ancho, alto });
+        }
+        catch (InvalidOperationException ex) { return BadRequest(new { error = ex.Message }); }
+        catch (Exception ex)
+        {
+            log.LogError(ex, "Error al subir el logo de portada");
+            return StatusCode(500, new { error = "No se pudo subir el logo." });
+        }
+    }
+
+    /// <summary>Vuelve al logo oficial del kit de marca.</summary>
+    public async Task<IActionResult> OnPostLogoHeroQuitarAsync(CancellationToken ct)
+    {
+        try
+        {
+            await svc.GuardarLogoHeroAsync("", 0, 0, ct);
+            return new JsonResult(new { ok = true });
+        }
+        catch (Exception ex)
+        {
+            log.LogError(ex, "Error al restaurar el logo de portada");
+            return StatusCode(500, new { error = "No se pudo restaurar el logo." });
+        }
+    }
+
     /// <summary>Guarda la lista completa de banners.</summary>
     public async Task<IActionResult> OnPostBannersAsync(
         [FromBody] BannerDto[] banners, CancellationToken ct)

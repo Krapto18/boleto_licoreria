@@ -91,13 +91,28 @@
 
          Si el archivo no carga, cae al titular de texto: un h1 vacío
          dejaría la página sin encabezado. *@
+      @{
+          // Si el dueño subió un logo desde el panel, manda ese. El
+          // oficial del kit es la vuelta atrás y el respaldo.
+          var cfg = Model.Catalogo.Config;
+          var propio = !string.IsNullOrWhiteSpace(cfg.LogoHero);
+          var logoSrc = propio ? cfg.LogoHero : Url.Content("~/assets/marca/logo-oscuro.svg");
+          var logoW = propio ? cfg.LogoHeroAncho : 928;
+          var logoH = propio ? cfg.LogoHeroAlto : 643;
+      }
       <h1 class="cartel__marca">
         @* Versión azul del logo: la chapa es crema, y la variante marfil
            quedaría invisible. El kit trae las dos y esta es la que
-           corresponde a fondo claro. *@
-        <img src="~/assets/marca/logo-oscuro.svg" width="928" height="643" fetchpriority="high"
-             alt="@Model.Catalogo.Config.Tienda · licorería abierta las 24 horas, todos los días"
-             asp-append-version="true"
+           corresponde a fondo claro.
+
+           El ancho y el alto se declaran siempre que se conozcan: esta
+           imagen es la más grande de la primera pantalla y sin ellos el
+           hero salta al terminar de cargar. Del logo subido se miden al
+           subirlo; si el formato no se pudo leer van en 0 y se omiten. *@
+        <img src="@logoSrc" fetchpriority="high"
+             width="@(logoW > 0 ? logoW.ToString() : null)"
+             height="@(logoH > 0 ? logoH.ToString() : null)"
+             alt="@cfg.Tienda · licorería abierta las 24 horas, todos los días"
              onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'display cartel__marca-txt',textContent:'A la hora que sea'}))">
       </h1>
       <svg class="flourish" viewBox="0 0 340 16" aria-hidden="true">

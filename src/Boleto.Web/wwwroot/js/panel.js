@@ -504,8 +504,8 @@
         delivery: ['Delivery por distrito',
             'El costo de cada distrito se suma al total del pedido del cliente. ' +
             '<b>Sale a la web apenas guardas.</b>'],
-        banners: ['Banners',
-            'Dos carruseles de hasta 5 imágenes cada uno. ' +
+        banners: ['Imágenes de la página',
+            'El logo de la portada y los banners de promoción. ' +
             '<b>Salen a la web apenas guardas.</b>']
     };
 
@@ -521,7 +521,7 @@
 
         if (b.dataset.tab === 'productos') pintarFotos();
         if (b.dataset.tab === 'delivery') pintarZonas();
-        if (b.dataset.tab === 'banners') pintarBanners();
+        if (b.dataset.tab === 'banners') { pintarBanners(); pintarLogo(); }
     });
 
     /* ══════════════════════════════════════════════════════════
@@ -887,6 +887,66 @@
         } catch (_) {
             toast('Sin conexión. Intenta de nuevo.', false);
         }
+    });
+
+    /* ══════════════════════════════════════════════════════════
+       Logo de la portada
+
+       Una sola imagen, no una lista. Se sube y sale: no pasa por el
+       borrador, igual que las zonas y los banners.
+
+       La vista previa se dibuja sobre crema porque ese es el fondo real
+       de la portada. Sobre el fondo oscuro del panel, un logo claro se
+       vería perfecto acá y sería invisible en la web — es el error más
+       fácil de cometer y el más difícil de notar desde el panel.
+       ══════════════════════════════════════════════════════════ */
+    const LOGO_OFICIAL = '/assets/marca/logo-oscuro.svg';
+    let logo = { url: CONFIG.logoHero || '', w: CONFIG.logoHeroW || 0, h: CONFIG.logoHeroH || 0 };
+
+    function pintarLogo() {
+        const img = $('#logoPrev'); if (!img) return;
+        const propio = !!logo.url;
+        img.src = propio ? logo.url : LOGO_OFICIAL;
+        img.hidden = false;
+        $('#logoVacio').hidden = true;
+        $('#logoQuitar').hidden = !propio;
+        $('#logoEstado').innerHTML = propio
+            ? `Logo propio${logo.w ? ` · <b>${logo.w}×${logo.h} px</b>` : ''}`
+            : 'Ahora está el <b>logo oficial</b> del kit de marca.';
+    }
+
+    $('#logoFile')?.addEventListener('change', async (e) => {
+        const f = e.target.files[0]; if (!f) return;
+        const fd = new FormData();
+        fd.append('archivo', f);
+        $('#logoEstado').textContent = 'Subiendo…';
+        try {
+            const r = await fetch('/panel?handler=LogoHero', {
+                method: 'POST', headers: { 'RequestVerificationToken': token() }, body: fd
+            });
+            const d = await r.json().catch(() => ({}));
+            if (!r.ok) { toast(d.error || 'No se pudo subir el logo.', false); pintarLogo(); return; }
+            logo = { url: d.url, w: d.ancho, h: d.alto };
+            pintarLogo();
+            /* Si el archivo no se pudo medir, la página no puede reservarle
+               sitio y el hero salta al cargar. Se dice, no se esconde. */
+            toast(d.ancho
+                ? `Logo publicado (${d.ancho}×${d.alto} px)`
+                : 'Logo publicado. No se pudo leer su tamaño: puede que la portada salte al cargar.', false);
+        } catch (_) { toast('Sin conexión. Intenta de nuevo.', false); pintarLogo(); }
+        finally { e.target.value = ''; }
+    });
+
+    $('#logoQuitar')?.addEventListener('click', async () => {
+        try {
+            const r = await fetch('/panel?handler=LogoHeroQuitar', {
+                method: 'POST', headers: { 'RequestVerificationToken': token() }
+            });
+            if (!r.ok) { toast('No se pudo restaurar el logo.', false); return; }
+            logo = { url: '', w: 0, h: 0 };
+            pintarLogo();
+            toast('Volvió el logo oficial', false);
+        } catch (_) { toast('Sin conexión. Intenta de nuevo.', false); }
     });
 
     /* ══════════════════════════════════════════════════════════

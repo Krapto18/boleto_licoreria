@@ -53,7 +53,10 @@
             <button class="tab" role="tab" data-tab="precios" aria-selected="true">Precios y stock</button>
             <button class="tab" role="tab" data-tab="productos" aria-selected="false">Productos y fotos</button>
             <button class="tab" role="tab" data-tab="delivery" aria-selected="false">Delivery</button>
-            <button class="tab" role="tab" data-tab="banners" aria-selected="false">Banners</button>
+            @* "Imágenes" y ya no "Banners": la pestaña guarda dos cosas
+               distintas —el logo de la portada y los banners— y llamarla
+               por una sola escondía la otra. *@
+            <button class="tab" role="tab" data-tab="banners" aria-selected="false">Imágenes</button>
         </div>
 
         <section id="panel-precios" class="panel">
@@ -174,17 +177,75 @@
             <button class="btn btn--pub" id="guardarZonas">Guardar zonas</button>
         </section>
 
-        <!-- ══════════ BANNERS ══════════ -->
+        <!-- ══════════ IMÁGENES: LOGO DE PORTADA + BANNERS ══════════ -->
         <section id="panel-banners" class="panel" hidden>
-            <p class="ayuda__p">
-                Dos carruseles de hasta 5 banners, uno debajo del otro, antes del
-                catálogo. Dentro de un mismo carrusel todos deben tener el mismo
-                tamaño o la pista salta. Se recomienda <b>1200×900 px</b>, que es
-                el tamaño de los que ya están cargados: es lo más apaisado que
-                admiten las artes de Instagram sin cortarles el precio.
-            </p>
-            <div class="banners-adm" id="bannersAdm"></div>
-            <button class="btn btn--pub" id="guardarBanners">Guardar banners</button>
+
+            <!-- ── El logo de la portada ── -->
+            <div class="bloque">
+                <h2 class="bloque__h">Logo de la portada</h2>
+                <p class="bloque__p">
+                    Es la imagen grande de la primera pantalla, la que se ve apenas
+                    entra el cliente. <b>No es un banner:</b> hay una sola y no se
+                    desliza. Sale a la web apenas la subes.
+                </p>
+
+                @* La vista previa va sobre crema a propósito: es el fondo real
+                   de la portada. Sobre el fondo oscuro del panel, un logo claro
+                   se vería bien acá y sería invisible en la web. *@
+                <div class="logo-adm">
+                    <label class="logo-adm__caja" id="logoCaja">
+                        <img id="logoPrev" alt="Logo de la portada actual">
+                        <span id="logoVacio" hidden>Toca para subir</span>
+                        <input type="file" accept="image/jpeg,image/png,image/webp" id="logoFile">
+                    </label>
+                    <div class="logo-adm__lado">
+                        <p class="logo-adm__est" id="logoEstado"></p>
+                        <button class="mini" id="logoQuitar" hidden>Volver al logo oficial</button>
+                    </div>
+                </div>
+
+                <details class="guia">
+                    <summary>Cómo debe ser la imagen</summary>
+                    <table class="guia__t">
+                        <tr><th>Medida</th><td><b>1000 × 700 px</b> o proporción parecida (algo más ancha que alta)</td></tr>
+                        <tr><th>Resolución</th><td>Basta con 1000 px de ancho. Más grande no se ve mejor: solo pesa más</td></tr>
+                        <tr><th>Formato</th><td><b>PNG con fondo transparente.</b> WebP también sirve. JPG no, porque no tiene transparencia</td></tr>
+                        <tr><th>Color</th><td><b>Letras oscuras.</b> El fondo de la portada es color crema: un logo blanco o marfil ahí no se ve</td></tr>
+                        <tr><th>Peso</th><td>Hasta 2 MB, pero apunta a menos de 200 KB: es lo primero que carga el cliente</td></tr>
+                        <tr><th>Márgenes</th><td>Recorta el espacio vacío alrededor del dibujo o quedará un hueco raro bajo el logo</td></tr>
+                    </table>
+                    <p class="guia__nota">
+                        Si algo sale mal, "Volver al logo oficial" restaura el del kit
+                        de marca. Nunca se pierde.
+                    </p>
+                </details>
+            </div>
+
+            <!-- ── Los banners ── -->
+            <div class="bloque">
+                <h2 class="bloque__h">Banners de promoción</h2>
+                <p class="bloque__p">
+                    Dos carruseles de hasta 5 imágenes cada uno, uno debajo del otro,
+                    en la sección de promociones. Se deslizan solos con el dedo o con
+                    las flechas. Salen a la web cuando le das a Guardar.
+                </p>
+
+                <details class="guia">
+                    <summary>Cómo deben ser las imágenes</summary>
+                    <table class="guia__t">
+                        <tr><th>Medida</th><td><b>1200 × 900 px</b>, la de los que ya están cargados</td></tr>
+                        <tr><th>Todas iguales</th><td>Dentro de un mismo carrusel <b>todas del mismo tamaño</b>, o la pista salta al pasar de una a otra</td></tr>
+                        <tr><th>Formato</th><td>JPG o WebP. WebP pesa la mitad con la misma calidad</td></tr>
+                        <tr><th>Peso</th><td>Hasta 2 MB cada una. Apunta a menos de 250 KB</td></tr>
+                        <tr><th>El precio</th><td>Que quede <b>en el centro</b>. Los bordes se recortan en pantallas angostas</td></tr>
+                        <tr><th>Desde Instagram</th><td>Las artes cuadradas o verticales sirven, pero <b>recórtalas antes</b> a 1200×900: si las subes tal cual, se cortan solas por donde no conviene</td></tr>
+                        <tr><th>Descripción</th><td>Escribe qué dice la imagen en el campo de al lado. Es lo que lee quien no puede verla, y lo que Google entiende</td></tr>
+                    </table>
+                </details>
+
+                <div class="banners-adm" id="bannersAdm"></div>
+                <button class="btn btn--pub" id="guardarBanners">Guardar banners</button>
+            </div>
         </section>
 
         <!-- Resumen antes de publicar -->

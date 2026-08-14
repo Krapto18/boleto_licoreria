@@ -1304,6 +1304,147 @@ a {
 /* ══════════════════════════════════════════════════════════════
    BANNERS
    ══════════════════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════════
+   BLOQUES DE UNA PESTAÑA
+   La pestaña de imágenes guarda dos cosas distintas —el logo de la
+   portada y los banners—. Sin separarlas se leían como una sola
+   lista y el logo parecía un banner más.
+   ══════════════════════════════════════════════════════════════ */
+.bloque + .bloque {
+    margin-top: 34px;
+    padding-top: 30px;
+    border-top: 1px solid var(--marino-3)
+}
+
+.bloque__h {
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: 1.35rem;
+    margin-bottom: 6px
+}
+
+.bloque__p {
+    color: var(--tx-tenue);
+    font-size: .92rem;
+    max-width: 62ch;
+    margin-bottom: 16px
+}
+
+    .bloque__p b {
+        color: var(--crema);
+        font-weight: 600
+    }
+
+/* Guía plegada: quien ya sabe no la abre, quien no, la tiene ahí. */
+.guia {
+    border: 1px solid var(--marino-3);
+    border-radius: 12px;
+    margin-bottom: 18px;
+    background: var(--marino-2)
+}
+
+    .guia summary {
+        min-height: 44px;
+        display: flex;
+        align-items: center;
+        padding: 0 14px;
+        cursor: pointer;
+        font-size: .88rem;
+        font-weight: 600;
+        color: var(--ambar)
+    }
+
+.guia__t {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: .86rem
+}
+
+    .guia__t th,
+    .guia__t td {
+        text-align: left;
+        vertical-align: top;
+        padding: 8px 14px;
+        border-top: 1px solid var(--marino-3)
+    }
+
+    .guia__t th {
+        width: 150px;
+        color: var(--tx-tenue);
+        font-weight: 600;
+        white-space: nowrap
+    }
+
+    .guia__t b {
+        color: var(--crema)
+    }
+
+.guia__nota {
+    padding: 10px 14px 14px;
+    font-size: .82rem;
+    color: var(--tx-tenue)
+}
+
+/* ── Logo de la portada ─────────────────────────────────────── */
+.logo-adm {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    flex-wrap: wrap;
+    margin-bottom: 18px
+}
+
+/* Sobre crema, que es el fondo real de la portada: un logo claro se
+   vería bien sobre el panel oscuro y sería invisible en la web. */
+.logo-adm__caja {
+    width: 260px;
+    height: 150px;
+    border-radius: 12px;
+    background: #F7F1E3;
+    display: grid;
+    place-items: center;
+    padding: 12px;
+    cursor: pointer;
+    border: 1.5px dashed var(--marino-3);
+    transition: border-color .16s
+}
+
+    .logo-adm__caja:hover {
+        border-color: var(--ambar)
+    }
+
+    .logo-adm__caja img {
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain
+    }
+
+    .logo-adm__caja span {
+        font-size: .78rem;
+        color: #59637E
+    }
+
+    .logo-adm__caja input[type="file"] {
+        display: none
+    }
+
+.logo-adm__lado {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    align-items: flex-start
+}
+
+.logo-adm__est {
+    font-size: .86rem;
+    color: var(--tx-tenue)
+}
+
+    .logo-adm__est b {
+        color: var(--crema);
+        font-variant-numeric: tabular-nums
+    }
+
 .banners-adm {
     display: flex;
     flex-direction: column;

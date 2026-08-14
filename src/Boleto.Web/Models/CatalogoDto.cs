@@ -40,6 +40,15 @@ public record ConfigDto
     [JsonPropertyName("pagos")]      public string[] Pagos { get; init; } = [];
     [JsonPropertyName("tiempoEntrega")] public string TiempoEntrega { get; init; } = "";
     [JsonPropertyName("banners")]    public BannerDto[] Banners { get; init; } = [];
+
+    /// <summary>
+    /// Logo de la portada. Vacío = el oficial que viene con la app.
+    /// El ancho y el alto van aparte porque se declaran en el HTML: sin
+    /// ellos, el hero salta cuando la imagen termina de cargar.
+    /// </summary>
+    [JsonPropertyName("logoHero")]  public string LogoHero { get; init; } = "";
+    [JsonPropertyName("logoHeroW")] public int LogoHeroAncho { get; init; }
+    [JsonPropertyName("logoHeroH")] public int LogoHeroAlto { get; init; }
     [JsonPropertyName("verificar18")]   public bool Verificar18 { get; init; }
     [JsonPropertyName("ga4")]        public string Ga4 { get; init; } = "";
     [JsonPropertyName("metaPixel")]  public string MetaPixel { get; init; } = "";

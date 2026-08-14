@@ -63,6 +63,8 @@ public class CatalogoService(
             })
             .ToArrayAsync(ct);
 
+        var logo = ParsearLogo(tienda.LogoHero);
+
         var dto = new CatalogoDto(
             new ConfigDto
             {
@@ -83,6 +85,9 @@ public class CatalogoService(
                     StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),
                 TiempoEntrega = tienda.TiempoEntrega,
                 Banners = ParsearBanners(tienda.Banners),
+                LogoHero = logo.Ruta,
+                LogoHeroAncho = logo.Ancho,
+                LogoHeroAlto = logo.Alto,
                 Verificar18 = tienda.Verificar18,
                 Ga4 = tienda.Ga4,
                 MetaPixel = tienda.MetaPixel
@@ -138,6 +143,38 @@ public class CatalogoService(
                  Grupo = p.Length > 3 && p[3].Trim() == "2" ? 2 : 1
              })
              .ToArray();
+
+    /// <summary>Formato: ruta|ancho|alto. Vacío = el logo oficial.</summary>
+    private static (string Ruta, int Ancho, int Alto) ParsearLogo(string texto)
+    {
+        var p = texto.Split('|');
+        if (string.IsNullOrWhiteSpace(p[0])) return ("", 0, 0);
+        return (p[0].Trim(),
+                p.Length > 1 && int.TryParse(p[1], out var a) ? a : 0,
+                p.Length > 2 && int.TryParse(p[2], out var h) ? h : 0);
+    }
+
+    /// <summary>
+    /// Cambia el logo de la portada. Ruta vacía = vuelve al oficial.
+    /// </summary>
+    public async Task GuardarLogoHeroAsync(
+        string? ruta, int ancho, int alto, CancellationToken ct = default)
+    {
+        var limpia = (ruta ?? "").Replace('|', ' ').Replace('\n', ' ').Trim();
+        if (limpia.Length > 190)
+            throw new InvalidOperationException("La ruta de la imagen es demasiado larga.");
+
+        await using var db = await factory.CreateDbContextAsync(ct);
+        var t = await db.Tienda.FirstOrDefaultAsync(ct)
+                ?? throw new InvalidOperationException("No hay configuración de tienda.");
+
+        t.LogoHero = limpia.Length == 0 ? "" : $"{limpia}|{Math.Max(0, ancho)}|{Math.Max(0, alto)}";
+
+        await db.SaveChangesAsync(ct);
+        Invalidar();
+        log.LogInformation("Logo de portada actualizado: {Ruta}",
+            limpia.Length == 0 ? "(el oficial)" : limpia);
+    }
 
     public void Invalidar() => cache.Remove(Key);
 
@@ -201,6 +238,22 @@ public class CatalogoService(
         p.Grupo = d.Grupo;
         p.Precio = d.Precio;
         p.PrecioCombo = d.PrecioCombo;
+        /* Guardar desde el editor AFIRMA la composición del combo: lo
+           que quedó escrito, va incluido.
+
+           Sin esto, escribir un acompañante acá lo dejaba guardado y
+           apagado —la casilla vive en la pestaña de precios y nace en
+           false—: la auditoría lo registraba, el panel lo mostraba y la
+           web no lo enseñaba. Pasó de verdad, con un "Sprite 1.5 L" que
+           estuvo invisible hasta que apareció en el registro de cambios.
+
+           El apagado temporal —se acabó la gaseosa— se hace en la
+           pestaña de precios, que es donde se mira el día a día. Si
+           después se vuelve al editor y se guarda, se vuelve a afirmar
+           lo que dice el campo, que es lo que el editor significa. */
+        p.ComboAcompananteActivo = !string.IsNullOrWhiteSpace(d.ComboAcompanante);
+        p.ComboHieloActivo = !string.IsNullOrWhiteSpace(d.ComboHielo);
+
         p.ComboAcompanante = d.ComboAcompanante;
         p.ComboHielo = d.ComboHielo;
         p.Promo = d.Promo;

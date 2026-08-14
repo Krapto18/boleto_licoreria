@@ -297,6 +297,25 @@ nombre**. Con el `defaultValue: false` que EF genera solo, los 18 combos que ya
 existen habrían dejado de decir qué incluyen sin que nadie se enterara — el mismo
 error que casi se cuela con `ProductoActivo`.
 
+## El logo de la portada
+
+Se cambia desde el panel, pestaña **Imágenes**. Vacío en la base = se usa el
+oficial del kit, y "Volver al logo oficial" siempre lo restaura: el archivo del
+kit vive en `assets/` y el subido va al almacén, así que no hay forma de quedarse
+sin portada.
+
+**Las medidas se leen del archivo al subirlo** (`AlmacenBase.MedirAsync`): PNG en
+el IHDR, WebP en sus tres codificaciones, JPEG recorriendo segmentos hasta el
+SOF, sin librería de imágenes y sobre los mismos bytes que ya se leían para
+validar la firma. Se guardan como `ruta|ancho|alto` en `Tienda.LogoHero` y se
+declaran en el HTML: ese logo es el elemento que mide el LCP y sin su tamaño el
+hero salta al terminar de cargar. Si el formato no se pudo leer, el panel lo dice
+en vez de callarlo.
+
+La vista previa del panel se dibuja **sobre crema**, que es el fondo real de la
+portada: sobre el fondo oscuro del panel, un logo claro se vería perfecto y sería
+invisible en la web.
+
 ## Seguridad del panel
 
 - Login con ASP.NET Core Identity, bloqueo tras 5 intentos.

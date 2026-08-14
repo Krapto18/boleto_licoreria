@@ -72,6 +72,79 @@ public abstract class AlmacenBase
     };
 
     /// <summary>
+    /// Ancho y alto leídos de la cabecera del archivo, sin decodificar
+    /// la imagen ni depender de una librería de imágenes.
+    ///
+    /// Se usa para el logo de la portada: es el elemento más grande de
+    /// la primera pantalla, y sin declarar su tamaño en el HTML el hero
+    /// salta cuando la imagen termina de cargar. Devuelve (0, 0) si el
+    /// formato no se reconoce — quien llama decide qué hacer con eso.
+    /// </summary>
+    public static async Task<(int Ancho, int Alto)> MedirAsync(
+        Stream s, CancellationToken ct = default)
+    {
+        // 64 KB alcanzan de sobra: en los tres formatos el tamaño está
+        // en los primeros bytes, salvo JPEG, donde hay que saltar
+        // segmentos hasta el SOF. Un EXIF enorme podría empujarlo más
+        // allá; en ese caso se devuelve (0,0) y no se declara tamaño.
+        var buf = new byte[64 * 1024];
+        var n = 0;
+        while (n < buf.Length)
+        {
+            var leidos = await s.ReadAsync(buf.AsMemory(n, buf.Length - n), ct);
+            if (leidos == 0) break;
+            n += leidos;
+        }
+        if (n < 16) return (0, 0);
+        var b = buf.AsSpan(0, n);
+
+        static int Be16(ReadOnlySpan<byte> d, int i) => (d[i] << 8) | d[i + 1];
+        static int Be32(ReadOnlySpan<byte> d, int i) =>
+            (d[i] << 24) | (d[i + 1] << 16) | (d[i + 2] << 8) | d[i + 3];
+        static int Le16(ReadOnlySpan<byte> d, int i) => d[i] | (d[i + 1] << 8);
+
+        // ── PNG: la cabecera IHDR va siempre en el mismo sitio ──
+        if (b[0] == 0x89 && b[1] == 0x50 && n >= 24)
+            return (Be32(b, 16), Be32(b, 20));
+
+        // ── WebP: tres codificaciones, tres sitios distintos ──
+        if (n >= 30 && b[0] == 0x52 && b[8] == 0x57 && b[9] == 0x45)
+        {
+            var tipo = System.Text.Encoding.ASCII.GetString(b.Slice(12, 4));
+            if (tipo == "VP8 ")                       // con pérdida
+                return (Le16(b, 26) & 0x3FFF, Le16(b, 28) & 0x3FFF);
+            if (tipo == "VP8L")                       // sin pérdida
+            {
+                var bits = b[21] | (b[22] << 8) | (b[23] << 16) | (b[24] << 24);
+                return ((bits & 0x3FFF) + 1, ((bits >> 14) & 0x3FFF) + 1);
+            }
+            if (tipo == "VP8X")                       // extendido
+                return ((b[24] | (b[25] << 8) | (b[26] << 16)) + 1,
+                        (b[27] | (b[28] << 8) | (b[29] << 16)) + 1);
+        }
+
+        // ── JPEG: hay que recorrer segmentos hasta el marcador SOF ──
+        if (b[0] == 0xFF && b[1] == 0xD8)
+        {
+            var i = 2;
+            while (i + 9 < n)
+            {
+                if (b[i] != 0xFF) { i++; continue; }
+                var m = b[i + 1];
+                if (m is 0xD8 or 0x01 or >= 0xD0 and <= 0xD7) { i += 2; continue; }
+                var largo = Be16(b, i + 2);
+                if (largo < 2) break;
+                // SOF0-3, 5-7, 9-11, 13-15. Se excluyen DHT/JPG/DAC.
+                if (m is >= 0xC0 and <= 0xCF && m is not (0xC4 or 0xC8 or 0xCC))
+                    return (Be16(b, i + 7), Be16(b, i + 5));
+                i += 2 + largo;
+            }
+        }
+
+        return (0, 0);
+    }
+
+    /// <summary>
     /// Comprueba los bytes iniciales. La extensión se puede renombrar;
     /// la firma del archivo no.
     /// </summary>

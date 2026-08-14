@@ -438,6 +438,24 @@ async function navegacion(browser) {
        `el texto alternativo carga la propuesta de valor ("${marca.alt}")`);
     ok(marca.cargo, 'el logo del hero carga de verdad (si no, el h1 queda vacío)');
 
+    /* El logo de la portada es configurable desde el panel. Sea el
+       oficial o uno subido, tiene que llevar ancho y alto declarados:
+       es el elemento más grande de la primera pantalla y sin ellos el
+       hero salta cuando termina de cargar. */
+    const medida = await p.evaluate(() => {
+      const i = document.querySelector('.cartel__marca img');
+      return {
+        w: i.getAttribute('width'), h: i.getAttribute('height'),
+        propio: !/\/assets\/marca\//.test(i.getAttribute('src') || ''),
+        salto: Math.abs(i.naturalWidth / i.naturalHeight -
+                        Number(i.getAttribute('width')) / Number(i.getAttribute('height')))
+      };
+    });
+    ok(medida.w > 0 && medida.h > 0,
+       `el logo declara su tamaño (${medida.w}×${medida.h}, ${medida.propio ? 'subido desde el panel' : 'el oficial'})`);
+    ok(medida.salto < 0.02,
+       `el tamaño declarado coincide con el del archivo (desvío ${medida.salto.toFixed(3)})`);
+
     /* ── El kit de marca ──────────────────────────────────────
        Piezas que no se ven fallar: un SVG que no carga deja un
        hueco silencioso, y una máscara CSS que no se aplica deja un
@@ -784,10 +802,19 @@ async function combos(browser) {
   /* Lo que el panel desmarcó no viaja al navegador: no basta con no
      pintarlo, no puede estar en el HTML de una página pública. */
   const apagados = await p.evaluate(() =>
-    PRODUCTOS.filter((x) => x.combo != null && !x.aco && !x.hie).length);
+    PRODUCTOS.filter((x) => x.combo != null && !x.aco && !x.hie).map((x) => x.n));
   const html = await p.content();
   ok(!/"aco":null|"hie":null/.test(html),
-     `los combos sin composición viajan vacíos, no como nulos (${apagados} así)`);
+     `los combos sin composición viajan vacíos, no como nulos (${apagados.length} así)`);
+
+  /* Un combo que no dice de qué está hecho casi siempre es un fallo, no
+     una decisión: el dueño escribió el acompañante en el editor y la
+     casilla se quedó apagada, así que la web no lo enseñaba y desde el
+     panel se veía bien. Pasó con un "Sprite 1.5 L" que estuvo invisible
+     hasta que apareció en el registro de cambios. */
+  ok(apagados.length === 0,
+     'todos los combos dicen de qué están hechos' +
+     (apagados.length ? ` — mudos: ${apagados.join(', ')}` : ''));
 
   await ctx.close();
 }

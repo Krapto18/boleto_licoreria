@@ -673,7 +673,7 @@ reserva su espacio antes de cargar, así el resto del hero no salta.
 
 ## 36. Qué se verifica solo de todo esto
 
-47 comprobaciones nuevas en `tests/flujo-pedido.js`, sobre las 40 que ya había:
+50 comprobaciones nuevas en `tests/flujo-pedido.js`, sobre las 40 que ya había:
 
 - El sello ya no está y el buscador ocupa su lugar
 - Escribir en el nav filtra la grilla y el otro campo repite el texto; borrar en
@@ -919,3 +919,65 @@ distrito. Se le puso tope de 440; en móvil sigue estirándose a lo que haya.
 
 Lo comprueba la prueba: la fila ocupa el ancho de la barra y arranca a la misma
 altura que el total.
+
+## 43. El logo de la portada, desde el panel
+
+Lo pedido: que el dueño pueda cambiar el logo del hero, "por si alguna vez se le
+ocurre poner otra imagen allí". Va en la pestaña de imágenes, no en una pestaña
+propia: es una sola imagen y una pestaña para un campo es una pestaña que nadie
+abre.
+
+La pestaña pasó a llamarse **"Imágenes"** y no "Banners": guarda dos cosas
+distintas y llamarla por una sola escondía la otra. Dentro, dos bloques con
+título — "Logo de la portada" y "Banners de promoción" — y el del logo dice
+explícitamente **"no es un banner: hay una sola y no se desliza"**, que es la
+confusión que el nombre anterior provocaba.
+
+**La vista previa va sobre crema.** Es el fondo real de la portada. Sobre el
+fondo oscuro del panel, un logo claro se vería perfecto y sería invisible en la
+web: es el error más fácil de cometer y el más difícil de notar desde el panel.
+La guía lo dice también, en palabras: *"El fondo de la portada es color crema: un
+logo blanco o marfil ahí no se ve"*.
+
+**Se mide sola.** El logo es el elemento más grande de la primera pantalla — el
+que decide el LCP — y su tamaño tiene que ir declarado en el HTML o el hero salta
+al terminar de cargar. En vez de pedirle las medidas al dueño, se leen de la
+cabecera del archivo al subirlo: PNG en el IHDR, WebP en sus tres codificaciones,
+JPEG recorriendo segmentos hasta el SOF. Sin librería de imágenes, sobre los
+mismos bytes que ya se leían para comprobar que el archivo es lo que dice ser. Si
+el formato no se pudo leer, el aviso lo dice en vez de callarlo: *"No se pudo leer
+su tamaño: puede que la portada salte al cargar"*.
+
+**Siempre hay vuelta atrás.** "Volver al logo oficial" restaura el del kit. El
+logo oficial nunca se toca: vive en `assets/` y el subido va al almacén, así que
+no hay forma de quedarse sin portada.
+
+**Las recomendaciones van plegadas** (`<details>`), no en un párrafo suelto: quien
+ya sabe no las abre y quien no, las tiene ahí. Están las del logo y las de los
+banners, cada una con medida, resolución, formato, peso y el error típico de cada
+caso — para los banners, que las artes de Instagram hay que recortarlas antes a
+1200×900 o se cortan solas por donde no conviene.
+
+## 44. Un combo que no decía de qué estaba hecho
+
+Al revisar por qué el número de combos había subido de 18 a 19, el registro de
+auditoría mostró que el dueño le había puesto combo a un producto: *Sprite 1.5 L*
+y *Hielo 3 kg*, guardados desde el editor de producto.
+
+En la web salía vacío.
+
+El editor escribía el nombre pero nunca encendía la casilla de "va en el combo",
+que vive en la pestaña de precios y nace apagada. Resultado: la auditoría lo
+registraba, el panel lo mostraba escrito y el cliente no lo veía. El caso peor de
+todos — el sistema decía que sí en todas partes menos donde importa.
+
+Se arregló en dos partes. **Guardar desde el editor afirma la composición**: lo
+que quede escrito, va incluido. El apagado temporal —se acabó la gaseosa— se hace
+en la pestaña de precios, que es donde se mira el día a día. Y una **migración
+repara lo ya guardado**, que el arreglo del código no alcanzaba a tocar: enciende
+donde hay nombre y la casilla apagada. Es seguro hacerlo ahora porque la pestaña
+que permite apagar a mano se estrenó con esta misma tanda y todavía no ha llegado
+a producción: no hay ninguna decisión deliberada que pisar.
+
+Ahora la prueba falla si algún combo no dice de qué está hecho. Lo habría cazado
+el mismo día.

@@ -135,7 +135,16 @@ a {
         color: var(--ambar)
     }
 
+/* El texto mide 19 px de alto; el objetivo mínimo son 44. Se gana con
+   relleno y no agrandando la letra: se ve igual y se acierta mejor. Es
+   lo mismo que hace el nav de la web pública. */
 .link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    min-width: 44px;
+    padding-inline: 8px;
     font-size: .83rem;
     font-weight: 500;
     color: var(--tx-tenue);
@@ -151,7 +160,13 @@ a {
         display: none
     }
 
-    .link {
+    /* Se esconde "Ver la web", que es una comodidad: la web se abre
+       igual desde el navegador.
+
+       "Salir" NO. Llevaba la misma clase y la regla se llevaba las dos
+       por delante: en el teléfono no había forma de cerrar sesión, y el
+       panel se usa desde el celular, en la tienda, a veces prestado. */
+    .top__in > a.link {
         display: none
     }
 }

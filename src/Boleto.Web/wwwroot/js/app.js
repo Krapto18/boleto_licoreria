@@ -187,18 +187,31 @@
      al catálogo y le pasa el texto y el cursor a su buscador, que está
      junto a los resultados. De ahí en adelante se escribe donde el
      problema no existe, y de paso el foco queda al lado de lo que
-     cambia, que es lo que corresponde. */
+     cambia, que es lo que corresponde.
+
+     En móvil el traspaso además CIERRA el menú. Es lo que faltaba para
+     que el buscador pudiera vivir ahí: el panel ocupa la pantalla, así
+     que escribir dentro y dejarlo abierto era escribir contra una
+     cortina. Cerrándolo, la primera letra deja el catálogo a la vista
+     con el teclado todavía puesto. */
   CAMPOS_Q.forEach((s) => $(s)?.addEventListener('input', (e) => {
     buscar(e.target.value, e.target);
     if (e.target.id !== 'qNav' || !busca) return;
 
-    acercarCatalogo();
-
     const q = $('#q');
     if (!q || document.activeElement === q) return;
+
+    /* El foco salta ANTES de cerrar el menú: si el campo que lo tiene
+       desaparece primero, el teclado del teléfono se baja y hay que
+       volver a tocar para seguir escribiendo. */
     q.focus({ preventScroll: true });
     // Sin esto el cursor queda al principio y la siguiente letra entra al revés.
     q.setSelectionRange(q.value.length, q.value.length);
+
+    const burger = $('#burger');
+    if (burger?.getAttribute('aria-expanded') === 'true') burger.click();
+
+    acercarCatalogo();
   }));
 
   $('#promoBtn').addEventListener('click', () => {

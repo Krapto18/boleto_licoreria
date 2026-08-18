@@ -44,7 +44,10 @@ npm test        # con la app corriendo
 ```
 
 Corre el pedido completo en un navegador real —escritorio y móvil con
-touch— hasta el mensaje de WhatsApp. Existe porque dos defectos reales
+touch— hasta el mensaje de WhatsApp. Si encuentra las credenciales del
+panel (user-secrets, o `BOLETO_USER` / `BOLETO_PASS`) entra también a
+comprobar que se puede cerrar sesión desde el teléfono; si no las
+encuentra, se salta esa parte en vez de fallar. Existe porque dos defectos reales
 pasaron una verificación hecha solo con peticiones al servidor: ninguno
 de los dos era visible sin un navegador. Detalle en `tests/README.md`.
 
@@ -222,7 +225,10 @@ de verdad lo hace verificable. Hay dos campos de búsqueda —el del nav y el de
 catálogo— porque en móvil el nav se pliega: son el mismo estado y se copian el
 texto entre sí.
 
-**Menú hamburguesa en móvil**, con el logo y el catálogo. Esto contradice a
+**Menú hamburguesa en móvil**, con el logo, el buscador y el catálogo. Escribir en
+el buscador del menú lo cierra y pasa el texto y el cursor al buscador del
+catálogo: el menú ocupa la pantalla y dejarlo abierto sería escribir contra una
+cortina. Esto contradice a
 Nielsen #6 y es una decisión del cliente, no una recomendación. Se hizo con
 `aria-expanded`, salida con Escape y devolución del foco, cierre al elegir y 44
 px de objetivo. El buscador del catálogo y el botón de WhatsApp **no** están

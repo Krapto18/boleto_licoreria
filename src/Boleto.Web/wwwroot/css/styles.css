@@ -2109,16 +2109,18 @@ body[data-edad="pendiente"] {
         display: flex
     }
 
-    /* El buscador del nav NO va en el panel de móvil.
-       Estuvo y fue un estorbo: el panel tapa la grilla, así que se
-       escribía y no se veía ningún resultado; encima el salto al
-       catálogo movía la página por detrás. Buscar desde un menú que
-       cubre la pantalla no tiene sentido.
-       En móvil se busca en el buscador del catálogo, que está a la
-       vista sin abrir nada y funciona bien. Y el panel queda con lo
-       que pidió el cliente: solo el logo y el catálogo. */
+    /* El buscador primero: es lo que vino a reemplazar al sello y lo
+       que más se usa.
+
+       Estuvo escondido un tiempo porque escribir acá no mostraba nada:
+       el propio panel tapa la grilla. No era el sitio lo que estaba
+       mal, era lo que pasaba después. Ahora, a la primera letra, el
+       panel se cierra y el catálogo queda debajo con el cursor puesto
+       en su buscador — el mismo traspaso que en escritorio. */
     .search--nav {
-        display: none
+        order: -1;
+        max-width: none;
+        min-height: 48px
     }
 
     .nav__links {

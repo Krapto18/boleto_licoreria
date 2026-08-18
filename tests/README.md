@@ -71,13 +71,28 @@ los que pasa el cliente y falla si aparece verde en algo que no lleve a
 `wa.me`, si algún estado se queda sin llamado a la vista, o si el texto
 del botón baja de 4.5:1 de contraste.
 
+**El panel desde el teléfono.** Una regla de CSS escondía "Ver la web" y
+se llevaba por delante "Salir", que tenía la misma clase: el dueño no
+podía cerrar sesión desde el celular, con una sesión de ocho horas y a
+veces en un teléfono prestado. La prueba entra, comprueba que "Salir" se
+ve y se toca, lo toca, y vuelve a `/panel` para confirmar que la sesión
+se cerró de verdad. Necesita credenciales —de los user-secrets o de
+`BOLETO_USER` / `BOLETO_PASS`—; sin ellas se salta en vez de fallar.
+
 **Navegación.** El sello "Abierto ahora" dejó su sitio a un buscador y en
 móvil el menú se pliega. Esconder navegación cuesta, así que se comprueba
 que lo plegado funcione: que el botón diga si está abierto, que Escape lo
 cierre y devuelva el foco, que elegir una opción lo cierre, que el foco
 entre al abrir y que el botón mida 44 px. Y que el buscador del catálogo
-siga a la vista en móvil **sin** abrir el menú. Los dos campos de búsqueda
-se comprueban sincronizados en los dos sentidos.
+siga a la vista en móvil **sin** abrir el menú.
+
+El buscador del nav es una puerta de entrada, no el buscador: con la
+primera letra cierra el menú, lleva al catálogo y le pasa el texto y el
+cursor al buscador de ahí. Se comprueba entero —que el menú se cierre,
+que el cursor llegue, que los resultados queden a la vista y que seguir
+escribiendo no mueva la página— y **escribiendo tecla por tecla**, porque
+con `fill()` el defecto original no aparecía: era un repintado por tecla
+lo que arrastraba la vista.
 
 **El logo del hero.** Reemplazó al titular, así que se comprueba que siga
 siendo el `<h1>`, que sea el único, que su texto alternativo mencione las
@@ -87,10 +102,14 @@ de la página quedaría vacío y nadie se enteraría desde fuera.
 **Los dos carruseles.** Cada banner cae en el suyo, el segundo va debajo
 del primero, cada carrusel tiene sus propios puntos, mover uno no marca
 los del otro, los puntos se tocan a 44 px aunque se dibujen a 9, y el
-enlace "Catálogo" sigue saltando por encima de los dos. Los banners se
-**inyectan en la respuesta** porque la base todavía no tiene ninguno: sin
-eso la función quedaría sin probar hasta que el dueño suba el primero, que
-es tarde para enterarse.
+enlace "Catálogo" sigue saltando por encima de los dos. Las flechas se
+comprueban aparte: miden 44 px, pasan de banner y se apagan en los
+extremos.
+
+Los banners se **inyectan en la respuesta** en vez de usar los que trae la
+base: así la prueba controla cuántos hay en cada carrusel y puede
+comprobar que no se mezclan, sin depender de lo que el dueño tenga
+cargado ese día.
 
 Detalle de cada corrección en `docs/decisiones-ihc.md`, niveles 5 y 6.
 

@@ -577,10 +577,43 @@ async function navegacion(browser) {
        'dentro del menú está el catálogo');
     ok(!(await p.isVisible('.nav__link--esc')),
        'en móvil el menú queda con lo pedido: solo el catálogo');
-    /* El buscador estuvo en el panel y era un estorbo: el propio panel
-       tapa la grilla, así que se escribía sin ver ningún resultado. */
-    ok(!(await p.isVisible('#qNav')),
-       'el buscador NO está en el panel: taparía los resultados que muestra');
+    ok(await p.isVisible('#qNav'), 'el buscador está en el panel');
+
+    /* El panel ocupa la pantalla: escribir dentro y dejarlo abierto era
+       escribir contra una cortina. La primera letra tiene que cerrarlo y
+       dejar el catálogo a la vista, o el buscador parece roto otra vez. */
+    await p.click('#qNav');
+    await p.keyboard.type('johnnie', { delay: 60 });
+    await p.waitForTimeout(700);
+
+    const traspaso = await p.evaluate(() => ({
+      menu: document.querySelector('#burger').getAttribute('aria-expanded'),
+      foco: document.activeElement.id,
+      q: document.querySelector('#q').value,
+      n: document.querySelectorAll('.card').length,
+      vista: [...document.querySelectorAll('.card')].filter((c) => {
+        const r = c.getBoundingClientRect();
+        return r.top < window.innerHeight && r.bottom > 0;
+      }).length
+    }));
+    ok(traspaso.menu === 'false', 'escribir en él cierra el menú, que si no tapa los resultados');
+    ok(traspaso.foco === 'q', `y el cursor pasa al buscador del catálogo (quedó en #${traspaso.foco})`);
+    ok(traspaso.q === 'johnnie', 'con el texto ya escrito, sin repetirlo');
+    ok(traspaso.vista > 0,
+       `y los resultados quedan a la vista (${traspaso.vista} de ${traspaso.n})`);
+
+    const y1 = await p.evaluate(() => Math.round(window.scrollY));
+    await p.keyboard.type(' xyz', { delay: 60 });
+    await p.waitForTimeout(500);
+    ok(Math.abs(await p.evaluate(() => Math.round(window.scrollY)) - y1) <= 8,
+       'seguir escribiendo no mueve la página');
+
+    await p.fill('#q', '');
+    await p.waitForTimeout(300);
+    await p.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));
+    await p.waitForTimeout(200);
+    await p.click('#burger');
+    await p.waitForTimeout(300);
     ok(await p.evaluate(() => document.activeElement?.closest('#navMenu') !== null),
        'al abrir, el foco entra al menú');
 
@@ -819,6 +852,82 @@ async function combos(browser) {
   await ctx.close();
 }
 
+/* ══════════════════════════════════════════════════════════════
+   El panel, desde el teléfono
+
+   El dueño lo usa desde el celular, en la tienda, a veces con el
+   teléfono prestado. Una regla de CSS escondía "Ver la web" y se
+   llevaba por delante "Salir", que tenía la misma clase: no había
+   forma de cerrar sesión. Nadie lo vio hasta que lo sufrió.
+
+   Necesita credenciales. Se leen de los user-secrets del proyecto o
+   de BOLETO_USER / BOLETO_PASS. Sin ellas se salta, no se falla: la
+   prueba tiene que poder correr en una máquina que no tenga el panel
+   configurado.
+   ══════════════════════════════════════════════════════════════ */
+function credenciales() {
+  if (process.env.BOLETO_USER && process.env.BOLETO_PASS)
+    return { u: process.env.BOLETO_USER, p: process.env.BOLETO_PASS };
+
+  const fs = require('fs'), path = require('path');
+  const raiz = process.env.APPDATA && path.join(process.env.APPDATA, 'Microsoft', 'UserSecrets');
+  if (!raiz || !fs.existsSync(raiz)) return null;
+
+  for (const d of fs.readdirSync(raiz)) {
+    const f = path.join(raiz, d, 'secrets.json');
+    if (!fs.existsSync(f)) continue;
+    let j;
+    try { j = JSON.parse(fs.readFileSync(f, 'utf8').replace(/^﻿/, '')); } catch { continue; }
+    const u = j['Admin:Email'] || (j.Admin && j.Admin.Email);
+    const p = j['Admin:Password'] || (j.Admin && j.Admin.Password);
+    if (u && p) return { u, p };
+  }
+  return null;
+}
+
+async function panel(browser) {
+  console.log('\n=== PANEL EN EL TELÉFONO ===');
+
+  const cred = credenciales();
+  if (!cred) {
+    console.log('  (sin credenciales del panel: se salta)');
+    return;
+  }
+
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 },
+                                         hasTouch: true, isMobile: true });
+  const p = await ctx.newPage();
+  const base = URL.replace(/\/$/, '');
+
+  await p.goto(base + '/panel', { waitUntil: 'networkidle' });
+  await p.fill('input[type=email]', cred.u);
+  await p.fill('input[type=password]', cred.p);
+  await p.click('button[type=submit]');
+  await p.waitForTimeout(2000);
+
+  if (!(await p.locator('#tabla').count())) {
+    ok(false, 'se entra al panel con las credenciales configuradas');
+    await ctx.close();
+    return;
+  }
+  ok(true, 'se entra al panel desde el teléfono');
+
+  const salir = p.locator('.salir button');
+  ok(await salir.isVisible(), 'el botón de cerrar sesión se ve en el teléfono');
+
+  const caja = await salir.boundingBox();
+  ok(caja && caja.width >= 44 && caja.height >= 44,
+     `y se puede tocar: ${Math.round(caja.width)}x${Math.round(caja.height)}`);
+
+  await salir.click();
+  await p.waitForTimeout(1800);
+  await p.goto(base + '/panel', { waitUntil: 'networkidle' });
+  ok(await p.locator('input[type=password]').count() > 0,
+     'cerrar sesión cierra de verdad: volver al panel vuelve a pedir contraseña');
+
+  await ctx.close();
+}
+
 (async () => {
   const browser = await abrirNavegador();
   try {
@@ -827,6 +936,7 @@ async function combos(browser) {
     await navegacion(browser);
     await carruseles(browser);
     await combos(browser);
+    await panel(browser);
   } finally {
     await browser.close();
   }

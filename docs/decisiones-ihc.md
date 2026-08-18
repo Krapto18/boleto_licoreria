@@ -673,7 +673,7 @@ reserva su espacio antes de cargar, así el resto del hero no salta.
 
 ## 36. Qué se verifica solo de todo esto
 
-50 comprobaciones nuevas en `tests/flujo-pedido.js`, sobre las 40 que ya había:
+59 comprobaciones nuevas en `tests/flujo-pedido.js`, sobre las 40 que ya había:
 
 - El sello ya no está y el buscador ocupa su lugar
 - Escribir en el nav filtra la grilla y el otro campo repite el texto; borrar en
@@ -981,3 +981,41 @@ a producción: no hay ninguna decisión deliberada que pisar.
 
 Ahora la prueba falla si algún combo no dice de qué está hecho. Lo habría cazado
 el mismo día.
+
+## 45. Sin salida en el panel del teléfono
+
+Una regla escondía en móvil el enlace "Ver la web", que es una comodidad. El
+botón "Salir" llevaba **la misma clase** y la regla se lo llevó por delante: en el
+teléfono no había forma de cerrar sesión.
+
+Es peor de lo que parece dicho así. El panel se usa desde el celular, en la
+tienda, a veces con un teléfono que no es el propio, y la sesión dura ocho horas.
+Quedarse dentro sin poder salir no es una molestia de diseño: es una sesión
+abierta en un aparato ajeno.
+
+Ahora se esconde solo "Ver la web" —la web se abre igual desde el navegador— y
+"Salir" se queda siempre. De paso, el enlace medía **26×19 px** en escritorio,
+por debajo incluso del mínimo de 24 de la WCAG 2.5.8. Se le da el área con
+relleno y no con letra más grande, igual que en el nav de la web pública: 44×44
+en todos los tamaños.
+
+Hay prueba nueva: entra al panel desde un viewport de teléfono, comprueba que
+"Salir" se ve y se puede tocar, lo toca, y vuelve a `/panel` para confirmar que
+la sesión se cerró **de verdad** y no solo de vista. Necesita credenciales; sin
+ellas se salta en vez de fallar, para que la prueba corra igual en una máquina
+sin el panel configurado.
+
+## 46. El buscador vuelve al menú del teléfono
+
+Se había escondido porque escribir ahí no mostraba nada: el propio panel ocupa la
+pantalla y tapa la grilla. La conclusión de entonces —"buscar desde un menú que
+cubre la pantalla no tiene sentido"— era la conclusión equivocada. No era el
+sitio lo que estaba mal, era lo que pasaba después.
+
+Ahora la primera letra **cierra el menú**, lleva al catálogo y le pasa el texto y
+el cursor a su buscador. Es el mismo traspaso que arregló el de escritorio en el
+punto 40; lo que faltaba era cerrar la cortina.
+
+Un detalle del orden de las operaciones: el foco salta al otro campo **antes** de
+cerrar el menú. Si el campo que tiene el foco desaparece primero, el teclado del
+teléfono se baja y hay que volver a tocar para seguir escribiendo.

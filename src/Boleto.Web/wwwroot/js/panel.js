@@ -16,23 +16,48 @@
         ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
     const LS = 'boleto:borrador';
-    const BASE = PRODUCTOS.map((p) => ({ ...p }));   // catálogo publicado (mutable al publicar)
+
+    /* PRODUCTOS es el catálogo tal como sale a la web, y ahí la
+       composición del combo llega ya filtrada: lo que está apagado viaja
+       vacío. Para poder editarla hace falta el dato crudo, que está en
+       TODOS —el payload del panel—. Se fusionan por id. */
+    const CRUDO = Object.fromEntries((typeof TODOS !== 'undefined' ? TODOS : [])
+        .map((p) => [p.id, p]));
+
+    const conCombo = (p) => {
+        const t = CRUDO[p.id] || {};
+        return {
+            ...p,
+            aco: t.aco ?? '', acoP: +(t.acoP ?? 0), acoOn: !!t.acoOn,
+            hie: t.hie ?? '', hieP: +(t.hieP ?? 0), hieOn: !!t.hieOn
+        };
+    };
+
+    const BASE = PRODUCTOS.map(conCombo);            // catálogo publicado (mutable al publicar)
     let draft = BASE.map((p) => ({ ...p }));         // catálogo en edición
     let grupo = 'Todo', busca = '', soloCambiados = false;
     let ultimo = null, toastT = null;
 
+    /* Los campos del combo que se editan en esta pestaña. Tenerlos en una
+       lista evita el clásico: agregar un campo, olvidarlo en `cambiado` y
+       que el borrador se pierda al recargar sin que nadie lo note. */
+    const CAMPOS = ['p', 'combo', 'stock', 'aco', 'acoP', 'acoOn', 'hie', 'hieP', 'hieOn'];
+
     const base = (id) => BASE.find((p) => p.id === id);
     const cambiado = (p) => {
         const b = base(p.id);
-        return b.p !== p.p || b.combo !== p.combo || b.stock !== p.stock;
+        return CAMPOS.some((k) => b[k] !== p[k]);
     };
     const cambios = () => draft.filter(cambiado);
 
     /* ── Borrador ────────────────────────────────────────────── */
     function guardar() {
         try {
-            localStorage.setItem(LS, JSON.stringify(
-                cambios().map((p) => ({ id: p.id, p: p.p, combo: p.combo, stock: p.stock }))));
+            localStorage.setItem(LS, JSON.stringify(cambios().map((p) => {
+                const o = { id: p.id };
+                CAMPOS.forEach((k) => { o[k] = p[k]; });
+                return o;
+            })));
         } catch (_) { }
     }
     function recuperar() {
@@ -42,7 +67,7 @@
             JSON.parse(raw).forEach((c) => {
                 const p = draft.find((x) => x.id === c.id);
                 if (!p) return;
-                p.p = c.p; p.combo = c.combo; p.stock = c.stock;
+                CAMPOS.forEach((k) => { if (c[k] !== undefined) p[k] = c[k]; });
             });
         } catch (_) { }
     }
@@ -114,13 +139,129 @@
           <button data-stock="${p.id}" aria-pressed="${p.stock}"
                   aria-label="${p.stock ? 'Hay stock' : 'Agotado'} de ${esc(p.n)}"></button>
         </div>
+        ${p.combo != null ? filaCombo(p) : ''}
       </div>`;
         }).join('');
 
         etiquetasMasivo();
     }
 
+    /* ══════════════════════════════════════════════════════════
+       Composición del combo
+
+       Va como una segunda línea dentro de la fila y no como dos
+       columnas más: son seis controles nuevos por producto y el panel
+       se usa desde el celular, en la tienda. En columnas no entran; en
+       línea aparte se leen igual en el teléfono y en el escritorio.
+
+       Solo sale en productos que tienen combo. Sin precio de combo no
+       hay nada que componer, igual que el campo de precio de combo ya
+       venía deshabilitado.
+       ══════════════════════════════════════════════════════════ */
+    function filaCombo(p) {
+        const parte = (clave, etiqueta, marcador) => {
+            const on = p[clave + 'On'];
+            return `
+        <div class="adit" data-on="${on}">
+          <label class="adit__sw">
+            <input type="checkbox" data-on="${clave}" data-id="${p.id}" ${on ? 'checked' : ''}>
+            <span>${etiqueta}</span>
+          </label>
+          <input class="adit__n" type="text" data-nom="${clave}" data-id="${p.id}"
+                 value="${esc(p[clave] || '')}" placeholder="${marcador}" maxlength="60"
+                 aria-label="Qué ${etiqueta.toLowerCase()} lleva el combo de ${esc(p.n)}">
+          <input class="adit__p" type="number" data-pre="${clave}" data-id="${p.id}"
+                 value="${(+p[clave + 'P'] || 0).toFixed(2)}" step="0.10" min="0" inputmode="decimal"
+                 aria-label="Precio suelto del ${etiqueta.toLowerCase()} de ${esc(p.n)}">
+        </div>`;
+        };
+
+        return `
+      <div class="combo">
+        <p class="combo__t">El combo incluye <small>— el precio de cada parte no
+          se publica: sirve para saber qué estás regalando</small></p>
+        ${parte('aco', 'Aditivo', 'Gaseosa, ginger, energizante…')}
+        ${parte('hie', 'Hielo', 'Hielo 3 kg')}
+        <p class="combo__suma" data-suma="${p.id}">${suma(p)}</p>
+      </div>`;
+    }
+
+    /* Comparar el combo con lo que costaría por partes es la razón de que
+       los precios estén acá. El panel no decide el precio: lo pone al
+       lado para que el dueño vea si le cierra. */
+    function suma(p) {
+        const partes = [`botella ${money(p.p)}`];
+        let t = p.p;
+        if (p.acoOn) { t += +p.acoP || 0; partes.push(`aditivo ${money(+p.acoP || 0)}`); }
+        if (p.hieOn) { t += +p.hieP || 0; partes.push(`hielo ${money(+p.hieP || 0)}`); }
+        if (partes.length === 1) return 'El combo no lleva nada marcado todavía.';
+        const dif = (p.combo ?? 0) - t;
+        const cierre = Math.abs(dif) < 0.005
+            ? 'igual que el combo'
+            : dif < 0 ? `el combo cobra ${money(-dif)} menos` : `el combo cobra ${money(dif)} más`;
+        return `${partes.join(' + ')} = ${money(t)} · ${cierre}`;
+    }
+
+    function refrescarSuma(id) {
+        const p = draft.find((x) => x.id === id);
+        const el = $(`[data-suma="${id}"]`);
+        if (p && el) el.textContent = suma(p);
+    }
+
+    /* El nombre del aditivo y del hielo se puede editar en dos sitios: acá
+       y en el editor de producto. Cuando el editor guarda, esta pestaña
+       adopta el nombre nuevo — salvo que acá hubiera un cambio sin
+       publicar, que no se pisa. */
+    function sincronizarCombo(id, aco, hie) {
+        const b = base(id), d = draft.find((x) => x.id === id);
+        if (!b || !d) return;
+        if (d.aco === b.aco) d.aco = aco;
+        if (d.hie === b.hie) d.hie = hie;
+        b.aco = aco; b.hie = hie;
+        pintar(); refrescar();
+    }
+
     /* ── Edición ─────────────────────────────────────────────── */
+    /* Nombre y precio de las partes del combo. Van antes que el manejador
+       de precios porque comparten el evento y estos traen data-id. */
+    $('#tabla').addEventListener('input', (e) => {
+        const el = e.target;
+        const clave = el.dataset.nom || el.dataset.pre;
+        if (!clave) return;
+        const p = draft.find((x) => x.id === el.dataset.id);
+        if (!p) return;
+
+        if (el.dataset.nom) {
+            p[clave] = el.value;
+            /* Marcado pero sin nombre es un combo que anuncia algo que no
+               dice cuál. Se señala acá y el servidor lo vuelve a revisar. */
+            el.classList.toggle('mal', p[clave + 'On'] && !el.value.trim());
+        } else {
+            const v = parseFloat(el.value);
+            if (el.value === '' || isNaN(v) || v < 0) { el.classList.add('mal'); return; }
+            el.classList.remove('mal');
+            p[clave + 'P'] = v;
+        }
+        refrescarSuma(p.id);
+        marcarFila(p.id);
+        refrescar();
+    });
+
+    $('#tabla').addEventListener('change', (e) => {
+        const el = e.target;
+        if (el.type !== 'checkbox' || !el.dataset.on) return;
+        const clave = el.dataset.on;
+        const p = draft.find((x) => x.id === el.dataset.id);
+        if (!p) return;
+        p[clave + 'On'] = el.checked;
+        el.closest('.adit').dataset.on = el.checked;
+        const nom = $(`[data-nom="${clave}"][data-id="${p.id}"]`);
+        if (nom) nom.classList.toggle('mal', el.checked && !nom.value.trim());
+        refrescarSuma(p.id);
+        marcarFila(p.id);
+        refrescar();
+    });
+
     $('#tabla').addEventListener('input', (e) => {
         const el = e.target;
         const id = el.dataset.precio || el.dataset.combo;
@@ -133,6 +274,7 @@
         el.classList.remove('mal');
 
         if (el.dataset.precio) p.p = v; else p.combo = v;
+        refrescarSuma(id);   // la suma arranca en el precio de la botella
 
         /* Prevención de errores: el combo no puede costar menos que la botella */
         if (p.combo != null && p.combo <= p.p) {
@@ -238,6 +380,19 @@
             if (b.p !== p.p) partes.push(`botella <s>${money(b.p)}</s> → <i>${money(p.p)}</i>`);
             if (b.combo !== p.combo && p.combo != null) partes.push(`combo <s>${money(b.combo)}</s> → <i>${money(p.combo)}</i>`);
             if (b.stock !== p.stock) partes.push(p.stock ? '<i>vuelve a haber stock</i>' : '<i>agotado</i>');
+
+            /* El desglose del combo también se resume: publicar a ciegas un
+               cambio que el cliente va a ver en su mensaje de WhatsApp es
+               justo lo que este resumen existe para evitar. */
+            [['aco', 'aditivo'], ['hie', 'hielo']].forEach(([k, et]) => {
+                if (b[k + 'On'] !== p[k + 'On'])
+                    partes.push(p[k + 'On'] ? `<i>el combo lleva ${et}</i>` : `<i>el combo ya no lleva ${et}</i>`);
+                if (b[k] !== p[k])
+                    partes.push(`${et} <s>${esc(b[k] || '—')}</s> → <i>${esc(p[k] || '—')}</i>`);
+                if (b[k + 'P'] !== p[k + 'P'])
+                    partes.push(`precio del ${et} <s>${money(+b[k + 'P'] || 0)}</s> → <i>${money(+p[k + 'P'] || 0)}</i>`);
+            });
+
             return `<div><b>${esc(p.n)}</b> — ${partes.join(' · ')}</div>`;
         }).join('');
 
@@ -260,6 +415,15 @@
             return;
         }
 
+        /* Marcado pero sin nombre: el combo anunciaría que incluye algo sin
+           decir qué, y eso llega al mensaje de WhatsApp del cliente. */
+        const sinNombre = cs.filter((p) =>
+            (p.acoOn && !String(p.aco || '').trim()) || (p.hieOn && !String(p.hie || '').trim()));
+        if (sinNombre.length) {
+            toast(`Ponle nombre al aditivo o al hielo de ${sinNombre[0].n}, o desmarca la casilla`, false);
+            return;
+        }
+
         /* Nielsen #1 · el sistema dice qué está haciendo.
            Sin esto el dueño toca dos veces creyendo que no pasó nada. */
         const btn = $('#publicar');
@@ -272,7 +436,9 @@
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': token() },
                 body: JSON.stringify(cs.map((p) => ({
-                    id: p.id, precio: p.p, precioCombo: p.combo, stock: p.stock
+                    id: p.id, precio: p.p, precioCombo: p.combo, stock: p.stock,
+                    aditivo: p.aco ?? '', aditivoPrecio: +p.acoP || 0, aditivoEnCombo: !!p.acoOn,
+                    hielo: p.hie ?? '', hieloPrecio: +p.hieP || 0, hieloEnCombo: !!p.hieOn
                 })))
             });
 
@@ -325,14 +491,172 @@
        Precios queda de entrada: es la tarea diaria. Fotos y banners
        son ocasionales y no deben estorbar el flujo rápido.
        ══════════════════════════════════════════════════════════ */
+    /* Cada pestaña dice qué es y —lo que más confunde— cuándo sale a la web.
+       Solo Precios usa borrador; el resto publica al guardar. Sin decirlo,
+       el dueño busca un botón "Publicar" que en esas pantallas no existe. */
+    const AYUDA = {
+        precios: ['Precios y stock',
+            'Cambia lo que necesites. Se guardan como borrador en este dispositivo y ' +
+            '<b>recién aparecen en la web cuando le das a Publicar</b>.'],
+        productos: ['Productos y fotos',
+            'Alta, edición y baja de productos. <b>Lo que guardes acá sale a la web al momento</b>, ' +
+            'no pasa por el borrador de precios.'],
+        delivery: ['Delivery por distrito',
+            'El costo de cada distrito se suma al total del pedido del cliente. ' +
+            '<b>Sale a la web apenas guardas.</b>'],
+        banners: ['Imágenes de la página',
+            'El logo de la portada y los banners de promoción. ' +
+            '<b>Salen a la web apenas guardas.</b>']
+    };
+
     $('.tabs')?.addEventListener('click', (e) => {
         const b = e.target.closest('.tab'); if (!b) return;
         document.querySelectorAll('.tab').forEach((x) =>
             x.setAttribute('aria-selected', x === b));
         document.querySelectorAll('.panel').forEach((p) =>
             p.hidden = p.id !== 'panel-' + b.dataset.tab);
+
+        const t = AYUDA[b.dataset.tab];
+        if (t) { $('#ayudaT').textContent = t[0]; $('#ayudaP').innerHTML = t[1]; }
+
         if (b.dataset.tab === 'productos') pintarFotos();
-        if (b.dataset.tab === 'banners') pintarBanners();
+        if (b.dataset.tab === 'delivery') pintarZonas();
+        if (b.dataset.tab === 'banners') { pintarBanners(); pintarLogo(); }
+    });
+
+    /* ══════════════════════════════════════════════════════════
+       Delivery · costo por distrito
+
+       El costo entra en el total que ve el cliente antes de enviar el
+       pedido, así que un número mal puesto acá es un precio equivocado
+       en WhatsApp. Se valida en el campo y otra vez en el servidor.
+       ══════════════════════════════════════════════════════════ */
+    let zonas = (CONFIG.zonas || []).map((z) => ({ ...z }));
+    let buscaZona = '';
+
+    /* Un distrito desmarcado no se borra de la lista en memoria: se marca.
+       Así se puede volver a activar sin perder el costo que tenía. */
+    zonas.forEach((z) => { z.on = true; });
+
+    function zonasVisibles() {
+        return zonas.filter((z) => !buscaZona || z.n.toLowerCase().includes(buscaZona));
+    }
+
+    function pintarZonas() {
+        if (!$('#zonasAdm')) return;
+
+        const lista = zonasVisibles();
+        const activos = zonas.filter((z) => z.on).length;
+        $('#zCount').textContent =
+            `${activos} distrito${activos === 1 ? '' : 's'} con reparto`
+            + (lista.length !== zonas.length ? ` · ${lista.length} en la búsqueda` : '');
+
+        $('#zonasAdm').innerHTML = lista.map((z) => {
+            const i = zonas.indexOf(z);
+            return `
+      <div class="zona-adm" data-i="${i}" data-off="${!z.on}">
+        <label class="zona-adm__on">
+          <input type="checkbox" data-zon="${i}" ${z.on ? 'checked' : ''}
+                 aria-label="Repartir a ${esc(z.n)}">
+          <b>${esc(z.n)}</b>
+        </label>
+        <div class="campo">
+          <label for="zc-${i}">Costo</label>
+          <input type="number" id="zc-${i}" data-zcosto="${i}" value="${(z.c ?? 0).toFixed(2)}"
+                 step="0.50" min="0" inputmode="decimal" ${z.on ? '' : 'disabled'}>
+        </div>
+        <div class="campo">
+          <label for="zt-${i}">Tiempo</label>
+          <input id="zt-${i}" data-ztiempo="${i}" value="${esc(z.t || '')}"
+                 placeholder="30-45 min" maxlength="30" ${z.on ? '' : 'disabled'}>
+        </div>
+      </div>`;
+        }).join('');
+    }
+
+    $('#qZonas')?.addEventListener('input', (e) => {
+        buscaZona = e.target.value.trim().toLowerCase();
+        pintarZonas();
+    });
+
+    $('#zonasAdm')?.addEventListener('input', (e) => {
+        const el = e.target;
+
+        const ic = el.dataset.zcosto;
+        if (ic !== undefined) {
+            const v = parseFloat(el.value);
+            /* Nielsen #9 · el error se marca en el campo exacto */
+            if (el.value === '' || isNaN(v) || v < 0) { el.classList.add('mal'); return; }
+            el.classList.remove('mal');
+            zonas[+ic].c = v;
+            return;
+        }
+
+        const it = el.dataset.ztiempo;
+        if (it !== undefined) zonas[+it].t = el.value;
+    });
+
+    $('#zonasAdm')?.addEventListener('change', (e) => {
+        const i = e.target.dataset.zon;
+        if (i === undefined) return;
+        zonas[+i].on = e.target.checked;
+        pintarZonas();
+    });
+
+    /* Cuando sube la gasolina, el costo sube parejo en los 43. Sin esto
+       son 43 campos a mano y el dueño termina no actualizando ninguno. */
+    $('#zAplicar')?.addEventListener('click', () => {
+        const v = parseFloat($('#zCostoTodos').value);
+        if (isNaN(v) || v < 0) {
+            $('#zCostoTodos').classList.add('mal');
+            toast('Escribe un costo válido para aplicar', false);
+            return;
+        }
+        $('#zCostoTodos').classList.remove('mal');
+
+        /* Respeta la búsqueda, igual que el ajuste masivo de precios. */
+        const lista = zonasVisibles().filter((z) => z.on);
+        lista.forEach((z) => { z.c = v; });
+        pintarZonas();
+        toast(`S/ ${v.toFixed(2)} aplicado a ${lista.length} distrito${lista.length === 1 ? '' : 's'}`, false);
+    });
+
+    $('#zReponer')?.addEventListener('click', () => {
+        let nuevos = 0;
+        DISTRITOS_LIMA.forEach((n) => {
+            const y = zonas.find((z) => z.n.toLowerCase() === n.toLowerCase());
+            if (y) { y.on = true; return; }
+            zonas.push({ n, c: 10, t: '', on: true });
+            nuevos++;
+        });
+        pintarZonas();
+        toast(nuevos ? `${nuevos} distrito${nuevos === 1 ? '' : 's'} agregado${nuevos === 1 ? '' : 's'}`
+                     : 'Ya estaban los 43, se reactivaron los desmarcados', false);
+    });
+
+    $('#guardarZonas')?.addEventListener('click', async () => {
+        if ($('#zonasAdm').querySelector('.mal')) {
+            toast('Revisa los costos marcados en rojo', false);
+            return;
+        }
+
+        const btn = $('#guardarZonas');
+        const txt = btn.textContent;
+        btn.disabled = true; btn.textContent = 'Guardando…';
+
+        try {
+            const r = await fetch('/panel?handler=Zonas', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': token() },
+                body: JSON.stringify(zonas.filter((z) => z.on).map((z) => ({ n: z.n, c: z.c, t: z.t })))
+            });
+            const d = await r.json().catch(() => ({}));
+            toast(r.ok ? 'Zonas publicadas: ya están en la web' : (d.error || 'No se pudo guardar.'), false);
+        } catch (_) {
+            toast('Sin conexión. Intenta de nuevo.', false);
+        } finally {
+            btn.disabled = false; btn.textContent = txt;
+        }
     });
 
     /* ══════════════════════════════════════════════════════════
@@ -516,6 +840,11 @@
                     aco: cuerpo.comboAcompanante, hie: cuerpo.comboHielo,
                     promo: cuerpo.promo, orden: cuerpo.orden
                 });
+                /* La pestaña de precios guarda su propia copia del combo.
+                   Sin esto seguiría mostrando el nombre viejo y al
+                   publicar lo devolvería, pisando lo que se acaba de
+                   guardar acá. */
+                sincronizarCombo(editando, cuerpo.comboAcompanante, cuerpo.comboHielo);
                 toast('Producto actualizado y publicado', false);
             } else {
                 TODOS.push({
@@ -561,18 +890,95 @@
     });
 
     /* ══════════════════════════════════════════════════════════
-       Banners · máximo 5
+       Logo de la portada
+
+       Una sola imagen, no una lista. Se sube y sale: no pasa por el
+       borrador, igual que las zonas y los banners.
+
+       La vista previa se dibuja sobre crema porque ese es el fondo real
+       de la portada. Sobre el fondo oscuro del panel, un logo claro se
+       vería perfecto acá y sería invisible en la web — es el error más
+       fácil de cometer y el más difícil de notar desde el panel.
        ══════════════════════════════════════════════════════════ */
-    let banners = (CONFIG.banners || []).slice(0, 5).map((b) => ({ ...b }));
+    const LOGO_OFICIAL = '/assets/marca/logo-oscuro.svg';
+    let logo = { url: CONFIG.logoHero || '', w: CONFIG.logoHeroW || 0, h: CONFIG.logoHeroH || 0 };
+
+    function pintarLogo() {
+        const img = $('#logoPrev'); if (!img) return;
+        const propio = !!logo.url;
+        img.src = propio ? logo.url : LOGO_OFICIAL;
+        img.hidden = false;
+        $('#logoVacio').hidden = true;
+        $('#logoQuitar').hidden = !propio;
+        $('#logoEstado').innerHTML = propio
+            ? `Logo propio${logo.w ? ` · <b>${logo.w}×${logo.h} px</b>` : ''}`
+            : 'Ahora está el <b>logo oficial</b> del kit de marca.';
+    }
+
+    $('#logoFile')?.addEventListener('change', async (e) => {
+        const f = e.target.files[0]; if (!f) return;
+        const fd = new FormData();
+        fd.append('archivo', f);
+        $('#logoEstado').textContent = 'Subiendo…';
+        try {
+            const r = await fetch('/panel?handler=LogoHero', {
+                method: 'POST', headers: { 'RequestVerificationToken': token() }, body: fd
+            });
+            const d = await r.json().catch(() => ({}));
+            if (!r.ok) { toast(d.error || 'No se pudo subir el logo.', false); pintarLogo(); return; }
+            logo = { url: d.url, w: d.ancho, h: d.alto };
+            pintarLogo();
+            /* Si el archivo no se pudo medir, la página no puede reservarle
+               sitio y el hero salta al cargar. Se dice, no se esconde. */
+            toast(d.ancho
+                ? `Logo publicado (${d.ancho}×${d.alto} px)`
+                : 'Logo publicado. No se pudo leer su tamaño: puede que la portada salte al cargar.', false);
+        } catch (_) { toast('Sin conexión. Intenta de nuevo.', false); pintarLogo(); }
+        finally { e.target.value = ''; }
+    });
+
+    $('#logoQuitar')?.addEventListener('click', async () => {
+        try {
+            const r = await fetch('/panel?handler=LogoHeroQuitar', {
+                method: 'POST', headers: { 'RequestVerificationToken': token() }
+            });
+            if (!r.ok) { toast('No se pudo restaurar el logo.', false); return; }
+            logo = { url: '', w: 0, h: 0 };
+            pintarLogo();
+            toast('Volvió el logo oficial', false);
+        } catch (_) { toast('Sin conexión. Intenta de nuevo.', false); }
+    });
+
+    /* ══════════════════════════════════════════════════════════
+       Banners · dos carruseles de 5
+
+       Cada carrusel es una lista aparte. Podrían ser una sola lista
+       con un campo "grupo", pero entonces quitar un banner del de
+       arriba correría uno del de abajo hacia arriba, que es justo lo
+       que el dueño no espera. Separadas, cada tira se comporta sola.
+       ══════════════════════════════════════════════════════════ */
+    const MAX_BANNER = 5;
+    const CARRUSELES = [
+        [1, 'Carrusel de arriba', 'Se ve apenas entran, antes del catálogo.'],
+        [2, 'Carrusel de abajo', 'Se ve al terminar de mirar los productos.']
+    ];
+
+    const banners = { 1: [], 2: [] };
+    (CONFIG.banners || []).forEach((b) => {
+        const g = b.g === 2 ? 2 : 1;
+        if (banners[g].length < MAX_BANNER) banners[g].push({ ...b, g });
+    });
 
     function pintarBanners() {
-        /* Siempre se muestran 5 ranuras: se ve de una cuántas quedan
-           libres, sin tener que contar ni leer una advertencia. */
-        const filas = [];
-        for (let i = 0; i < 5; i++) {
-            const b = banners[i] || { img: '', alt: '', url: '' };
-            filas.push(`
-        <div class="banner-adm" data-i="${i}">
+        if (!$('#bannersAdm')) return;
+        /* Siempre se muestran 5 ranuras por carrusel: se ve de una
+           cuántas quedan libres, sin contar ni leer una advertencia. */
+        $('#bannersAdm').innerHTML = CARRUSELES.map(([g, titulo, nota]) => {
+            const filas = [];
+            for (let i = 0; i < MAX_BANNER; i++) {
+                const b = banners[g][i] || { img: '', alt: '', url: '' };
+                filas.push(`
+        <div class="banner-adm" data-g="${g}" data-i="${i}">
           <label class="banner-adm__caja">
             ${b.img ? `<img src="${esc(b.img)}" alt="">` : `<span>Banner ${i + 1}<br>Toca para subir</span>`}
             <input type="file" accept="image/jpeg,image/png,image/webp" data-banner="${i}">
@@ -581,17 +987,28 @@
             <input data-alt="${i}" value="${esc(b.alt || '')}" placeholder="Descripción para accesibilidad" maxlength="120">
             <input data-url="${i}" value="${esc(b.url || '')}" placeholder="Enlace al tocar (opcional): #catalogo" maxlength="200">
           </div>
-          <button class="banner-adm__x" data-quitar="${i}" aria-label="Quitar banner ${i + 1}">✕</button>
+          <button class="banner-adm__x" data-quitar="${i}" aria-label="Quitar el banner ${i + 1} del ${titulo.toLowerCase()}">✕</button>
         </div>`);
-        }
-        if ($('#bannersAdm')) $('#bannersAdm').innerHTML = filas.join('');
+            }
+            return `<div class="banner-grupo" data-g="${g}">
+                      <h3 class="banner-grupo__h">${titulo}</h3>
+                      <p class="banner-grupo__p">${nota}</p>
+                      ${filas.join('')}
+                    </div>`;
+        }).join('');
     }
 
+    /* El carrusel al que pertenece una fila se lee del contenedor: así
+       el índice de la ranura sigue siendo 0-4 en los dos. */
+    const grupoDe = (el) => (el.closest('[data-g]')?.dataset.g === '2' ? 2 : 1);
+
     $('#bannersAdm')?.addEventListener('change', async (e) => {
+        const g = grupoDe(e.target);
         const inp = e.target.closest('[data-banner]');
         if (inp && inp.files[0]) {
             const i = +inp.dataset.banner;
             const fd = new FormData();
+            fd.append('grupo', g);
             fd.append('indice', i);
             fd.append('archivo', inp.files[0]);
             try {
@@ -600,23 +1017,23 @@
                 });
                 const d = await r.json().catch(() => ({}));
                 if (!r.ok) { toast(d.error || 'No se pudo subir el banner.', false); return; }
-                banners[i] = { ...(banners[i] || {}), img: d.url };
+                banners[g][i] = { ...(banners[g][i] || {}), img: d.url, g };
                 pintarBanners();
                 toast('Banner subido. Recuerda guardar.', false);
             } catch (_) { toast('Sin conexión. Intenta de nuevo.', false); }
             return;
         }
         const alt = e.target.closest('[data-alt]');
-        if (alt) { const i = +alt.dataset.alt; if (banners[i]) banners[i].alt = alt.value; }
+        if (alt) { const i = +alt.dataset.alt; if (banners[g][i]) banners[g][i].alt = alt.value; }
         const url = e.target.closest('[data-url]');
-        if (url) { const i = +url.dataset.url; if (banners[i]) banners[i].url = url.value; }
+        if (url) { const i = +url.dataset.url; if (banners[g][i]) banners[g][i].url = url.value; }
     });
 
     $('#bannersAdm')?.addEventListener('click', (e) => {
         const x = e.target.closest('[data-quitar]'); if (!x) return;
-        const i = +x.dataset.quitar;
-        if (!banners[i]?.img) return;
-        banners.splice(i, 1);   // los siguientes suben una posición
+        const g = grupoDe(x), i = +x.dataset.quitar;
+        if (!banners[g][i]?.img) return;
+        banners[g].splice(i, 1);   // los siguientes suben una posición
         pintarBanners();
         toast('Banner quitado. Recuerda guardar.', false);
     });
@@ -626,10 +1043,12 @@
         const txt = btn.textContent;
         btn.disabled = true; btn.textContent = 'Guardando…';
         try {
+            const carga = CARRUSELES.flatMap(([g]) =>
+                banners[g].filter((b) => b.img).map((b) => ({ ...b, g })));
             const r = await fetch('/panel?handler=Banners', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': token() },
-                body: JSON.stringify(banners.filter((b) => b.img))
+                body: JSON.stringify(carga)
             });
             const d = await r.json().catch(() => ({}));
             toast(r.ok ? 'Banners publicados' : (d.error || 'No se pudo guardar.'), false);

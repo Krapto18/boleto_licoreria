@@ -5,14 +5,19 @@
    el verde --wa se usa ÚNICAMENTE en elementos que abren
    WhatsApp. Ningún otro botón, borde o texto puede ser verde.
    ══════════════════════════════════════════════════════════════ */
+/* Azul y rojo salen del kit de marca, tal cual vienen en los SVG
+   oficiales: así el logo apoya sobre el fondo sin un salto de tono.
+   El crema se deja como estaba —el marfil de la marca (#fefcec) es casi
+   blanco y aclararía toda la chapa del hero, que no es lo que se pidió.
+   Medido: rojo de marca sobre crema da 4.80:1, por encima del 4.5 de AA. */
 :root {
-    --marino: #000725;
+    --marino: #000625;
     --marino-2: #08103A;
     --marino-3: #141E52;
     --crema: #F7F1E3;
     --crema-2: #E7DDC6;
-    --rojo: #C8102E;
-    --rojo-osc: #9E0C24;
+    --rojo: #CF2026;
+    --rojo-osc: #9C191D;
     --wa: #25D366;
     --wa-osc: #1BB854;
     --tx-claro: #F7F1E3;
@@ -255,21 +260,9 @@ a {
     display: flex;
     align-items: center;
     gap: 11px;
-    flex-shrink: 0
-}
-
-.logo__mark {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
     flex-shrink: 0;
-    background: var(--rojo);
-    color: var(--crema);
-    display: grid;
-    place-items: center;
-    font-family: var(--display);
-    font-weight: 700;
-    font-size: 1.3rem
+    /* En el nav es un enlace: el sello mide 40, el dedo pide 44. */
+    min-height: 44px
 }
 
 .logo__txt {
@@ -290,15 +283,29 @@ a {
         color: var(--tx-tenue)
     }
 
+/* En escritorio el menú es una fila del nav; en móvil, un panel que
+   cuelga de la hamburguesa. Es el mismo marcado: solo cambia cómo se
+   coloca. Un segundo menú duplicado se desincroniza tarde o temprano. */
+.nav__menu {
+    display: flex;
+    align-items: center;
+    gap: 22px;
+    margin-left: auto
+}
+
 .nav__links {
     display: flex;
     gap: 26px;
-    margin-left: auto;
     font-size: .88rem;
     font-weight: 500
 }
 
+    /* El texto mide 21 px de alto; el dedo necesita 44. Se crece el área
+       táctil con padding, no la tipografía: se ve igual, se acierta mejor. */
     .nav__links a {
+        display: inline-flex;
+        align-items: center;
+        min-height: 44px;
         color: var(--tx-tenue);
         transition: color .18s
     }
@@ -307,64 +314,63 @@ a {
             color: var(--crema)
         }
 
-@media(max-width:860px) {
-    .nav__links {
-        display: flex;
-        gap: 18px;
-        font-size: .82rem
-    }
+/* Buscador del nav · ocupa el sitio del sello "Abierto ahora".
+   Es el mismo componente que el del catálogo, más bajo: acá es un
+   atajo, no el buscador principal. Que se vean iguales es a propósito
+   — uno aprende una vez cómo se busca (Nielsen #4). */
+.search--nav {
+    min-height: 40px;
+    max-width: 260px;
+    padding: 6px 16px;
+    margin-bottom: 0;
+    background: rgba(247,241,227,.07)
 }
 
-.status {
-    display: inline-flex;
-    align-items: center;
-    gap: 9px;
-    flex-shrink: 0;
+    .search--nav input {
+        font-size: .88rem
+    }
+
+/* ── Hamburguesa · solo móvil ─────────────────────────────── */
+.burger {
+    display: none;
+    width: 44px;
+    height: 44px;
     margin-left: auto;
-    font-size: .72rem;
-    font-weight: 600;
-    letter-spacing: .12em;
-    text-transform: uppercase;
-    padding: 8px 15px;
-    border-radius: 99px;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    border-radius: 12px;
     border: 1px solid rgba(247,241,227,.28);
     background: rgba(247,241,227,.07);
     color: var(--crema)
 }
 
-    .status i {
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        background: currentColor;
-        animation: pulse 2.4s infinite;
-        flex-shrink: 0
-    }
-
-    .status em {
-        font-style: normal
-    }
-
-    .status b {
-        font-weight: 500;
-        opacity: .72;
-        font-variant-numeric: tabular-nums
-    }
-
-@keyframes pulse {
-    0%,100% {
-        opacity: 1
-    }
-
-    50% {
-        opacity: .28
-    }
+.burger__caja {
+    display: grid;
+    gap: 4px;
+    width: 20px
 }
 
-@media(max-width:520px) {
-    .status b {
-        display: none
+    .burger__caja i {
+        display: block;
+        height: 2px;
+        border-radius: 2px;
+        background: currentColor;
+        transition: transform .2s, opacity .2s
     }
+
+/* Abierto, las tres barras se vuelven una X: el mismo botón sirve
+   para cerrar y se ve que sirve, sin agregar un segundo control. */
+.burger[aria-expanded="true"] .burger__caja i:nth-child(1) {
+    transform: translateY(6px) rotate(45deg)
+}
+
+.burger[aria-expanded="true"] .burger__caja i:nth-child(2) {
+    opacity: 0
+}
+
+.burger[aria-expanded="true"] .burger__caja i:nth-child(3) {
+    transform: translateY(-6px) rotate(-45deg)
 }
 
 /* ── Hero ─────────────────────────────────────────────────── */
@@ -429,7 +435,12 @@ a {
     margin-top: 16px
 }
 
+    /* Enlace deliberadamente discreto: no debe competir con el CTA verde
+       (Hick, un solo primario). Se le da el área táctil por padding para
+       no tener que agrandar la letra y romper esa jerarquía. */
     .cartel__sub a {
+        display: inline-block;
+        padding: 11px 4px;
         color: var(--tx-gris);
         font-size: .92rem;
         text-decoration: underline;
@@ -442,6 +453,52 @@ a {
             text-decoration-color: var(--rojo)
         }
 
+
+/* ══════════════════════════════════════════════════════════════
+   ICONOS DE MARCA
+   Los tres del kit —carrito, hielo y acompañante— van donde
+   significan algo, no de adorno: el carrito en el resumen del
+   pedido, el hielo en la sección que habla del hielo y el
+   acompañante en la promoción, que es de eso.
+
+   Se pintan como máscara y no como <img> porque así heredan el
+   color del texto que acompañan: el mismo archivo sirve sobre la
+   chapa crema y sobre el fondo noche. Si el navegador no soporta
+   máscaras, el icono simplemente no se dibuja — no aparece un
+   cuadrado de color donde debería haber una silueta.
+   ══════════════════════════════════════════════════════════════ */
+.ico {
+    width: 22px;
+    height: 22px;
+    flex-shrink: 0;
+    display: inline-block
+}
+
+@supports (mask-image:url(a)) or (-webkit-mask-image:url(a)) {
+    .ico {
+        background: currentColor;
+        -webkit-mask: var(--ico) no-repeat center/contain;
+        mask: var(--ico) no-repeat center/contain
+    }
+}
+
+.ico--xl {
+    width: 48px;
+    height: 48px
+}
+
+.ico--carrito {
+    --ico: url(/assets/iconos/carrito.svg)
+}
+
+.ico--hielo {
+    --ico: url(/assets/iconos/hielo.svg)
+}
+
+.ico--acompanante {
+    --ico: url(/assets/iconos/acompanante.svg)
+}
+
 /* ── Secciones ────────────────────────────────────────────── */
 .sec {
     padding: 70px 0
@@ -449,6 +506,29 @@ a {
 
 .sec__head {
     margin-bottom: 28px
+}
+
+/* Los carruseles van centrados, así que su encabezado también. */
+.sec__head--c {
+    text-align: center
+}
+
+.sec__ico {
+    color: var(--tx-tenue);
+    margin: 0 auto 14px
+}
+
+/* La sección de promoción es la de los carruseles: el fondo se
+   diferencia apenas para separarla del hero sin pelearle. */
+.sec--promo {
+    padding: 54px 0 60px;
+    background: rgba(8,16,58,.5);
+    border-block: 1px solid var(--marino-3)
+}
+
+.promo__pie {
+    text-align: center;
+    margin-top: 26px
 }
 
 .sec__h {
@@ -459,87 +539,6 @@ a {
 .sec__p {
     color: var(--tx-tenue);
     max-width: 54ch
-}
-
-.promo {
-    background: var(--crema);
-    color: var(--tx-oscuro);
-    border-radius: var(--r-lg);
-    padding: clamp(30px,4.5vw,54px);
-    display: grid;
-    grid-template-columns: 1fr auto;
-    gap: 34px;
-    align-items: center
-}
-
-.promo__h {
-    font-size: clamp(2.1rem,5.2vw,3.4rem);
-    margin-top: 12px
-}
-
-    .promo__h em {
-        font-style: normal;
-        color: var(--rojo)
-    }
-
-.promo__p {
-    color: var(--tx-gris);
-    margin-bottom: 24px;
-    font-size: 1.02rem
-}
-
-    .promo__p b {
-        color: var(--tx-oscuro);
-        font-weight: 600
-    }
-
-.seal {
-    width: 170px;
-    height: 170px;
-    border-radius: 50%;
-    flex-shrink: 0;
-    background: var(--marino);
-    color: var(--crema);
-    border: 3px double var(--rojo);
-    display: grid;
-    place-content: center;
-    text-align: center;
-    transform: rotate(-8deg)
-}
-
-    .seal em {
-        display: block;
-        font-family: var(--display);
-        font-style: normal;
-        font-weight: 700;
-        font-size: 2.1rem;
-        line-height: 1
-    }
-
-    .seal b {
-        display: block;
-        margin-top: 6px;
-        font-size: .7rem;
-        font-weight: 500;
-        letter-spacing: .24em;
-        text-transform: uppercase;
-        color: var(--rojo)
-    }
-
-@media(max-width:760px) {
-    .promo {
-        grid-template-columns: 1fr;
-        justify-items: start
-    }
-
-        .promo > div:last-child {
-            justify-self: center
-        }
-
-    .seal {
-        width: 140px;
-        height: 140px
-    }
 }
 
 /* ── Buscador y filtros ───────────────────────────────────── */
@@ -571,11 +570,20 @@ a {
     .search input {
         background: none;
         border: none;
-        outline: none;
         color: var(--tx-claro);
         width: 100%;
         font-size: .95rem
     }
+
+        /* Antes acá había un `outline: none` a secas. Ganaba por
+           especificidad al :focus-visible global y dejaba el buscador sin
+           ninguna señal de foco: quien navega con teclado no sabía dónde
+           estaba parado. Se devuelve el indicador, ceñido al input. */
+        .search input:focus-visible {
+            outline: 3px solid var(--rojo);
+            outline-offset: 4px;
+            border-radius: 4px
+        }
 
         .search input::placeholder {
             color: var(--tx-tenue)
@@ -589,7 +597,7 @@ a {
 }
 
 .chip {
-    min-height: 42px;
+    min-height: 44px;
     padding: 9px 18px;
     border-radius: 99px;
     font-size: .85rem;
@@ -620,8 +628,20 @@ a {
 .grid {
     display: grid;
     grid-template-columns: repeat(4,1fr);
-    gap: 16px
+    gap: 16px;
+    /* Filtrar acorta la página, y cuando la página se acorta el
+       navegador recorta el scroll al nuevo máximo: la vista se movía
+       sola mientras el cliente seguía escribiendo. Reservando alto, el
+       documento no se desploma entre una tecla y la siguiente.
+       Medido: 248 px de salto entre teclas, ahora ninguno. */
+    min-height: 60vh
 }
+
+    /* Sin resultados no hay nada que estabilizar, y el alto reservado
+       empujaba el "No encontramos eso" al fondo de una pantalla vacía. */
+    .grid:empty {
+        min-height: 0
+    }
 
 @media(max-width:1040px) {
     .grid {
@@ -643,12 +663,67 @@ a {
     overflow: hidden;
     display: flex;
     flex-direction: column;
+    /* Para que al crecer se dibuje encima de las vecinas y no quede
+       recortada por las tarjetas que vienen después en el flujo. */
+    position: relative;
     transition: transform .2s,box-shadow .2s
 }
 
-    .card:hover {
-        transform: translateY(-4px);
-        box-shadow: 0 18px 40px rgba(0,0,0,.32)
+    /* La tarjeta crece al apuntarla, detrás de una consulta de capacidad.
+       En táctil no hay hover: el estado se queda pegado tras el tap y la
+       tarjeta quedaría agrandada hasta que toques otra.
+
+       El 1.03 no es timidez. La tarjeta contiene el botón "Agregar", y al
+       escalar el botón se desplaza: si crece demasiado, el objetivo huye
+       del cursor mientras lo apuntas (Fitts) y el borde puede salirse de
+       debajo del puntero, encendiendo y apagando el hover en bucle. A
+       1.03 el desplazamiento es de unos 3 px: se percibe, no estorba. */
+    @media (hover:hover) and (pointer:fine) {
+        .card:hover {
+            transform: translateY(-4px) scale(1.03);
+            box-shadow: 0 18px 40px rgba(0,0,0,.32);
+            z-index: 2
+        }
+
+        /* Barrido de brillo. Da la sensación premium del vidrio sin ninguno
+           de sus costos: no hay backdrop-filter ni transparencia bajo el
+           texto, así que el contraste de la tarjeta sigue siendo el mismo
+           14:1 de siempre. Es un gradiente que se mueve — la GPU ya sabe
+           componer transform y opacity baratos.
+
+           pointer-events:none es obligatorio: sin eso la capa se traga los
+           clics del botón "Agregar" y la tarjeta deja de funcionar. */
+        .card::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            z-index: 1;
+            pointer-events: none;
+            background: linear-gradient(105deg,transparent 42%,rgba(255,255,255,.55) 50%,transparent 58%);
+            transform: translateX(-120%);
+            opacity: 0;
+            transition: transform .6s ease,opacity .2s
+        }
+
+        .card:hover::after {
+            transform: translateX(120%);
+            opacity: 1
+        }
+    }
+
+    /* El bloque global solo acorta la transición: el salto de escala
+       seguiría ocurriendo, de golpe. Para sensibilidad vestibular lo que
+       molesta es el cambio de tamaño, así que acá se anula entero y se
+       deja la sombra como única señal de foco. */
+    @media (prefers-reduced-motion:reduce) {
+        .card:hover {
+            transform: none;
+            box-shadow: 0 18px 40px rgba(0,0,0,.32)
+        }
+
+        .card::after, .card:hover::after {
+            display: none
+        }
     }
 
     .card[data-in="true"] {
@@ -660,15 +735,27 @@ a {
     position: relative;
     overflow: hidden;
     display: grid;
+    /* La fila se fija al alto de la caja. Sin esto es una fila implícita
+       "auto", y el max-height:86% de la foto se resuelve contra ella en vez
+       de contra los 150px: la foto estira la fila, la fila agranda el tope
+       de la foto, y el overflow:hidden termina cortando la botella por
+       abajo. Con la fila fijada, el 86% vuelve a significar 86% de 150. */
+    grid-template-rows: 100%;
     place-items: center;
     background: radial-gradient(circle at 50% 38%,#FFF,var(--crema) 72%);
     border-bottom: 1px solid var(--crema-2);
 }
 /* Se contiene por ancho Y alto: con solo height la imagen se desborda
-   y tapa el cuerpo de la tarjeta. */
+   y tapa el cuerpo de la tarjeta.
+
+   96/92 y no 86/82: las fotos ya vienen normalizadas con su propio aire
+   —el producto ocupa el 86% del lienzo— así que el margen que agregaba el
+   CSS se sumaba al de la imagen y dejaba la botella en el 73% de la caja.
+   Con esto sube al 82% y sigue sobrando holgura para una foto que suban
+   por el panel sin pasar por tools/preparar_fotos.py. */
 .card__foto {
-    max-width: 82%;
-    max-height: 86%;
+    max-width: 92%;
+    max-height: 96%;
     width: auto;
     height: auto;
     object-fit: contain;
@@ -834,7 +921,7 @@ a {
 
     .seg button {
         flex: 1;
-        min-height: 34px;
+        min-height: 44px;
         padding: 5px 4px;
         border-radius: 7px;
         font-size: .71rem;
@@ -898,7 +985,7 @@ a {
 
     .qty button {
         width: 44px;
-        min-height: 42px;
+        min-height: 44px;
         border-radius: 8px;
         color: var(--crema);
         font-size: 1.25rem;
@@ -971,6 +1058,11 @@ a {
 .close {
     text-align: center;
     padding: 86px 0
+}
+
+.close__ico {
+    color: var(--tx-tenue);
+    margin: 0 auto 18px
 }
 
 .close__h {
@@ -1078,7 +1170,10 @@ a {
         font-weight: 700;
         font-size: 1.5rem;
         color: var(--crema);
-        font-variant-numeric: tabular-nums
+        font-variant-numeric: tabular-nums;
+        /* En 390 px el total se partía en dos renglones: "S/" arriba y
+           "45.00" abajo. El número que decide la compra no se corta. */
+        white-space: nowrap
     }
 
     .peek__sum span {
@@ -1196,8 +1291,10 @@ a {
         pointer-events: auto
     }
 
+    /* Deshacer es la red de seguridad del pedido (Nielsen #3) y solo vive
+       4 segundos: es el peor momento para fallar el toque. */
     .toast button {
-        min-height: 36px;
+        min-height: 44px;
         padding: 6px 16px;
         border-radius: 99px;
         background: var(--marino);
@@ -1393,6 +1490,28 @@ body[data-hero="true"] .float {
         max-height: min(34vh,200px)
     }
 
+    /* La barra ya se lleva un buen pedazo de una pantalla chica. La fila
+       del distrito se compacta para que sume lo mínimo sin bajar de los
+       44 px de objetivo táctil. */
+    .distrito {
+        gap: 10px;
+        padding: 6px 14px
+    }
+
+    .distrito__lbl {
+        font-size: .62rem;
+        letter-spacing: .08em
+    }
+
+    .orderbar__in {
+        padding: 10px 16px;
+        gap: 14px
+    }
+
+    .peek__sum b {
+        font-size: 1.3rem
+    }
+
     #barWa {
         padding: 15px 20px;
         font-size: .95rem
@@ -1440,19 +1559,24 @@ img.i-wa {
    El archivo trae su propio fondo marino. Como el token --marino
    ahora es el mismo color del logo, el rectángulo se funde con el
    nav y no hace falta recortarlo. */
+/* El isotipo es cuadrado y trae sus propias dimensiones en el SVG: se
+   fija por alto y el ancho lo sigue. */
 .logo__img {
-    height: 38px !important; /* el SVG trae dimensiones propias */
-    width: auto !important;
-    display: block;
+    height: 44px;
+    width: 44px;
+    flex-shrink: 0;
+    display: block
 }
 
 .foot .logo__img {
-    height: 34px !important
+    height: 40px;
+    width: 40px
 }
 
 @media(max-width:520px) {
     .logo__img {
-        height: 30px !important
+        height: 38px;
+        width: 38px
     }
 }
 
@@ -1591,12 +1715,33 @@ img.i-wa {
 /* ══════════════════════════════════════════════════════════════
    LOGOTIPO DEL HERO
    ══════════════════════════════════════════════════════════════ */
-.cartel__logo {
-    height: clamp(38px,7vw,58px);
-    width: auto;
-    margin: 0 auto 6px;
-    display: block
+/* ══════════════════════════════════════════════════════════════
+   LOGO DEL HERO
+   El kit de marca trae el logo en azul y en marfil. Sobre la chapa
+   crema va el azul, apoyado directo sobre el fondo: es un vector con
+   transparencia, no necesita placa ni recuadro.
+   ══════════════════════════════════════════════════════════════ */
+/* Con el elemento delante: `.cartel h1` de arriba pesa más que una
+   clase sola y le devolvería su margen de titular de texto. */
+.cartel h1.cartel__marca {
+    margin: 0 auto;
+    line-height: 0
 }
+
+    .cartel__marca img {
+        width: 100%;
+        max-width: 400px;
+        height: auto;
+        margin-inline: auto;
+        /* El ancho y el alto van también en el HTML: la imagen manda el
+           alto del hero y sin reservarlo el titular salta al cargar. */
+    }
+
+    /* Si el archivo no carga, vuelve el titular de texto. */
+    .cartel__marca-txt {
+        display: block;
+        font-size: clamp(3rem,8.4vw,5.6rem)
+    }
 
 /* ══════════════════════════════════════════════════════════════
    CARRUSEL DE BANNERS
@@ -1604,10 +1749,23 @@ img.i-wa {
    dedo y con teclado, y no bloquea el scroll de la página.
    ══════════════════════════════════════════════════════════════ */
 .banners {
-    padding: 20px 0 0
+    /* Las piezas del cliente son casi cuadradas (4:3). A todo el ancho
+       de la página un solo banner medía 885 px de alto y se comía la
+       pantalla entera: el cliente tenía que pasar dos banners a scroll
+       antes de ver un producto. Acotado, se lee como lo que es —un
+       afiche— y entran los dos con el catálogo asomando debajo. */
+    max-width: 560px;
+    margin-inline: auto
+}
+
+/* El segundo va pegado al primero. Solo la separación justa para que se
+   lean como dos pistas y no como una sola que se partió. */
+.banners--abajo {
+    margin-top: 18px
 }
 
 .carrusel {
+    position: relative;
     overflow-x: auto;
     overflow-y: hidden;
     scroll-snap-type: x mandatory;
@@ -1638,23 +1796,82 @@ img.i-wa {
         display: block
     }
 
+/* ── Flechas ──────────────────────────────────────────────────
+   El deslizamiento con el dedo ya funcionaba, pero en escritorio no
+   hay dedo y los puntos son un objetivo chico para "la siguiente".
+   Las flechas van sobre la foto, que es donde se las busca (Jakob),
+   y son marinas y no rojas ni verdes: el rojo es de la marca y el
+   verde está reservado para WhatsApp. */
+.flecha {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    background: rgba(0,6,37,.72);
+    border: 1px solid rgba(247,241,227,.3);
+    color: var(--crema);
+    backdrop-filter: blur(6px);
+    transition: background .18s, opacity .18s;
+    z-index: 2
+}
+
+    .flecha:hover {
+        background: rgba(0,6,37,.92)
+    }
+
+    /* En el extremo se apaga, no se quita: si desapareciera, la otra
+       flecha cambiaría de sitio y habría que volver a buscarla. */
+    .flecha:disabled {
+        opacity: .3;
+        cursor: default
+    }
+
+    .flecha svg {
+        width: 20px;
+        height: 20px
+    }
+
+.flecha--ant {
+    left: 10px
+}
+
+.flecha--sig {
+    right: 10px
+}
+
 .carrusel__puntos {
     display: flex;
-    gap: 8px;
     justify-content: center;
-    margin-top: 14px
+    margin-top: 4px
 }
 
+/* El punto que se ve mide 9 px; el que se toca, 44. Se separa el
+   dibujo del área táctil con un pseudoelemento: agrandar el círculo
+   habría convertido los puntos en botones y le habrían competido la
+   atención al banner, que es lo que hay que mirar. */
 .punto {
-    width: 9px;
-    height: 9px;
-    border-radius: 50%;
+    width: 44px;
+    height: 44px;
     padding: 0;
-    background: var(--marino-3);
-    transition: background .2s,transform .2s;
+    background: none;
+    display: grid;
+    place-items: center
 }
 
-    .punto[aria-selected="true"] {
+    .punto::before {
+        content: '';
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        background: var(--marino-3);
+        transition: background .2s, transform .2s
+    }
+
+    .punto[aria-selected="true"]::before {
         background: var(--rojo);
         transform: scale(1.35)
     }
@@ -1664,17 +1881,37 @@ img.i-wa {
    El costo de envío entra en el total antes de enviar el pedido:
    el cliente no se entera del cargo recién por WhatsApp.
    ══════════════════════════════════════════════════════════════ */
+/* Vive en la barra de pedido, fuera de la vista previa: el costo del
+   delivery entra en el total y el cliente tiene que poder verlo sin
+   desplegar nada. */
+/* El fondo va a sangre y el contenido queda alineado con el resto de la
+   barra. Antes la caja medía `max-width: var(--max)` con fondo propio:
+   con la vista previa abierta se leía como su continuación, pero al
+   cerrarla quedaba un rectángulo más claro flotando dentro de la barra
+   negra, con dos bordes verticales que no coincidían con nada.
+
+   El relleno lateral reproduce el centrado del contenedor de al lado sin
+   necesitar un envoltorio extra: 20 px pegado a los bordes, y a partir
+   de --max lo que sobre repartido a los dos lados. */
 .distrito {
     display: flex;
     align-items: center;
-    gap: 12px;
-    margin-top: 14px;
-    padding: 10px 14px;
-    max-width: 460px;
-    background: rgba(247,241,227,.06);
-    border: 1px solid var(--marino-3);
-    border-radius: 12px;
+    gap: 14px;
+    padding-block: 9px;
+    padding-inline: max(20px, calc((100% - var(--max)) / 2 + 20px));
+    background: rgba(247,241,227,.05);
+    border-bottom: 1px solid var(--marino-3);
 }
+
+    /* Mientras no eligió, el total todavía no es el total. Se señala sin
+       bloquear el envío: Nielsen #1 sin quitarle el control (#3). */
+    .distrito[data-pendiente="true"] {
+        background: rgba(200,16,46,.10)
+    }
+
+        .distrito[data-pendiente="true"] .distrito__lbl {
+            color: var(--crema)
+        }
 
 .distrito__lbl {
     font-size: .7rem;
@@ -1685,8 +1922,12 @@ img.i-wa {
     white-space: nowrap;
 }
 
+/* Un nombre de distrito no necesita 1180 px. Se le pone tope y en
+   escritorio queda del ancho de lo que tiene que mostrar; en móvil el
+   flex: 1 lo estira a lo que haya. */
 .distrito select {
     flex: 1;
+    max-width: 440px;
     min-height: 40px;
     min-width: 0;
     background: var(--marino);
@@ -1698,8 +1939,12 @@ img.i-wa {
     font-size: .9rem;
 }
 
-    .distrito select:focus {
-        outline: none;
+    /* El borde de 1px que había como única señal de foco no alcanza:
+       es demasiado sutil para el control que define el total del pedido.
+       Vuelve el outline de 3px del resto del sitio. */
+    .distrito select:focus-visible {
+        outline: 3px solid var(--rojo);
+        outline-offset: 3px;
         border-color: var(--rojo)
     }
 
@@ -1709,7 +1954,8 @@ img.i-wa {
 .foot__soc a {
     display: inline-flex;
     align-items: center;
-    gap: 8px
+    gap: 8px;
+    min-height: 44px
 }
 
 .i-soc {
@@ -1825,18 +2071,97 @@ body[data-edad="pendiente"] {
    última. Ponerlas antes fue el error que desbordaba el nav.
    ══════════════════════════════════════════════════════════════ */
 @media(max-width:860px) {
-    /* Un indicador de estado sugiere que a veces cierran, y no es así.
-     El 24/7 ya lo dicen la franja roja y el hero. */
-    .status {
-        display: none !important
-    }
-
     .nav__in {
         gap: 14px
     }
 
+    /* La barra queda con lo que pidió el cliente: logo y hamburguesa.
+       Todo lo demás baja al panel. */
+    .burger {
+        display: flex
+    }
+
+    /* El panel se posiciona contra el .nav, que ya es sticky y por eso
+       hace de referencia: cuelga del borde de abajo de la barra. */
+    .nav__menu {
+        display: none;
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+        margin: 0;
+        padding: 12px 20px 18px;
+        /* Opaco, no traslúcido como el nav: detrás pasa el titular del
+           hero y con cualquier transparencia el contraste del menú deja
+           de ser el que se calculó (WCAG 1.4.3). */
+        background: var(--marino);
+        border-bottom: 1px solid var(--marino-3);
+        box-shadow: 0 18px 40px rgba(0,0,0,.45);
+        animation: bajaMenu .18s ease-out
+    }
+
+    /* El estado lo manda el propio botón: no hay una clase que pueda
+       quedar desfasada del aria-expanded que lee el lector de pantalla. */
+    .burger[aria-expanded="true"] + .nav__menu {
+        display: flex
+    }
+
+    /* El buscador primero: es lo que vino a reemplazar al sello y lo
+       que más se usa.
+
+       Estuvo escondido un tiempo porque escribir acá no mostraba nada:
+       el propio panel tapa la grilla. No era el sitio lo que estaba
+       mal, era lo que pasaba después. Ahora, a la primera letra, el
+       panel se cierra y el catálogo queda debajo con el cursor puesto
+       en su buscador — el mismo traspaso que en escritorio. */
+    .search--nav {
+        order: -1;
+        max-width: none;
+        min-height: 48px
+    }
+
     .nav__links {
-        margin-left: auto
+        flex-direction: column;
+        gap: 0;
+        font-size: 1rem
+    }
+
+        .nav__links a {
+            min-height: 52px;
+            color: var(--crema)
+        }
+
+        /* Separador entre opciones, nunca colgando de la última. */
+        .nav__links a + a {
+            border-top: 1px solid var(--marino-3)
+        }
+
+    /* En móvil el cliente pidió solo el logo y el catálogo.
+       Va con el elemento delante: `.nav__links a` de arriba pesa más
+       que una clase sola y le devolvía el display:inline-flex. */
+    .nav__links a.nav__link--esc {
+        display: none
+    }
+}
+
+@keyframes bajaMenu {
+    from {
+        opacity: 0;
+        transform: translateY(-8px)
+    }
+
+    to {
+        opacity: 1;
+        transform: none
+    }
+}
+
+@media(prefers-reduced-motion:reduce) {
+    .nav__menu {
+        animation: none
     }
 }
 

@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Boleto.Data;
 using Boleto.Data.Entities;
 using Boleto.Web.Models;
 using Boleto.Web.Services;
@@ -29,8 +30,17 @@ public class IndexModel(CatalogoService svc, IAlmacen almacen, ILogger<IndexMode
     /// <summary>Incluye los dados de baja: el panel los muestra en gris.</summary>
     public string TodosJs { get; private set; } = "";
 
+    /// <summary>
+    /// Catálogo maestro de distritos, para poder reponer uno que se quitó
+    /// sin tener que recordar cómo se escribe.
+    /// </summary>
+    public string DistritosJs { get; private set; } = "";
+
     public async Task OnGetAsync(CancellationToken ct)
     {
+        DistritosJs = "const DISTRITOS_LIMA="
+            + JsonSerializer.Serialize(SeedData.DistritosLima, Json) + ";";
+
         var todos = await svc.TodosAsync(ct);
         TodosJs = "const TODOS=" + JsonSerializer.Serialize(todos.Select(p => new
         {
@@ -42,7 +52,11 @@ public class IndexModel(CatalogoService svc, IAlmacen almacen, ILogger<IndexMode
             p = p.Precio,
             combo = p.PrecioCombo,
             aco = p.ComboAcompanante,
+            acoP = p.ComboAcompanantePrecio,
+            acoOn = p.ComboAcompananteActivo,
             hie = p.ComboHielo,
+            hieP = p.ComboHieloPrecio,
+            hieOn = p.ComboHieloActivo,
             promo = p.Promo,
             stock = p.Stock,
             activo = p.Activo,
@@ -132,6 +146,11 @@ public class IndexModel(CatalogoService svc, IAlmacen almacen, ILogger<IndexMode
                 PrecioCombo = d.PrecioCombo,
                 ComboAcompanante = d.ComboAcompanante ?? "",
                 ComboHielo = d.ComboHielo ?? "",
+                /* Si el alta trae nombre, va incluido: nadie escribe el
+                   acompañante de un combo para dejarlo apagado. El precio
+                   se pone después, en la pestaña de precios. */
+                ComboAcompananteActivo = !string.IsNullOrWhiteSpace(d.ComboAcompanante),
+                ComboHieloActivo = !string.IsNullOrWhiteSpace(d.ComboHielo),
                 Promo = d.Promo,
                 Stock = true,
                 Color = string.IsNullOrWhiteSpace(d.Color) ? "#8A8A8A" : d.Color
@@ -146,16 +165,23 @@ public class IndexModel(CatalogoService svc, IAlmacen almacen, ILogger<IndexMode
         }
     }
 
-    /// <summary>Sube un banner del carrusel.</summary>
+    /// <summary>Sube un banner. <paramref name="grupo"/> es el carrusel: 1 arriba, 2 abajo.</summary>
     public async Task<IActionResult> OnPostBannerAsync(
-        int indice, IFormFile archivo, CancellationToken ct)
+        int grupo, int indice, IFormFile archivo, CancellationToken ct)
     {
         try
         {
-            if (indice is < 0 or > 4)
-                return BadRequest(new { error = "El carrusel admite un máximo de 5 banners." });
+            if (grupo is < 1 or > CatalogoService.Carruseles)
+                return BadRequest(new { error = "Ese carrusel no existe." });
+            if (indice < 0 || indice >= CatalogoService.BannersPorCarrusel)
+                return BadRequest(new
+                {
+                    error = $"Cada carrusel admite un máximo de {CatalogoService.BannersPorCarrusel} banners."
+                });
 
-            var url = await almacen.GuardarAsync(archivo, "banners", $"banner-{indice + 1}", ct);
+            // El nombre lleva el carrusel: si no, el banner 1 de abajo
+            // pisaría el archivo del banner 1 de arriba.
+            var url = await almacen.GuardarAsync(archivo, "banners", $"banner-{grupo}-{indice + 1}", ct);
             return new JsonResult(new { ok = true, url });
         }
         catch (InvalidOperationException ex) { return BadRequest(new { error = ex.Message }); }
@@ -163,6 +189,68 @@ public class IndexModel(CatalogoService svc, IAlmacen almacen, ILogger<IndexMode
         {
             log.LogError(ex, "Error al subir banner");
             return StatusCode(500, new { error = "No se pudo subir el banner." });
+        }
+    }
+
+    /// <summary>Guarda las zonas de reparto con su costo de delivery.</summary>
+    public async Task<IActionResult> OnPostZonasAsync(
+        [FromBody] ZonaDto[] zonas, CancellationToken ct)
+    {
+        try
+        {
+            await svc.GuardarZonasAsync(zonas ?? [], ct);
+            return new JsonResult(new { ok = true });
+        }
+        catch (InvalidOperationException ex) { return BadRequest(new { error = ex.Message }); }
+        catch (Exception ex)
+        {
+            log.LogError(ex, "Error al guardar zonas");
+            return StatusCode(500, new { error = "No se pudieron guardar las zonas." });
+        }
+    }
+
+    /// <summary>
+    /// Sube el logo de la portada y lo publica. Se mide al vuelo: esa
+    /// imagen es el elemento más grande de la primera pantalla y su
+    /// tamaño tiene que ir declarado en el HTML, o el hero salta cuando
+    /// termina de cargar. No se le pide al dueño lo que se puede leer
+    /// del propio archivo.
+    /// </summary>
+    public async Task<IActionResult> OnPostLogoHeroAsync(IFormFile archivo, CancellationToken ct)
+    {
+        try
+        {
+            int ancho = 0, alto = 0;
+            if (archivo is { Length: > 0 })
+            {
+                await using var flujo = archivo.OpenReadStream();
+                (ancho, alto) = await AlmacenBase.MedirAsync(flujo, ct);
+            }
+
+            var url = await almacen.GuardarAsync(archivo, "marca", "logo-portada", ct);
+            await svc.GuardarLogoHeroAsync(url, ancho, alto, ct);
+            return new JsonResult(new { ok = true, url, ancho, alto });
+        }
+        catch (InvalidOperationException ex) { return BadRequest(new { error = ex.Message }); }
+        catch (Exception ex)
+        {
+            log.LogError(ex, "Error al subir el logo de portada");
+            return StatusCode(500, new { error = "No se pudo subir el logo." });
+        }
+    }
+
+    /// <summary>Vuelve al logo oficial del kit de marca.</summary>
+    public async Task<IActionResult> OnPostLogoHeroQuitarAsync(CancellationToken ct)
+    {
+        try
+        {
+            await svc.GuardarLogoHeroAsync("", 0, 0, ct);
+            return new JsonResult(new { ok = true });
+        }
+        catch (Exception ex)
+        {
+            log.LogError(ex, "Error al restaurar el logo de portada");
+            return StatusCode(500, new { error = "No se pudo restaurar el logo." });
         }
     }
 

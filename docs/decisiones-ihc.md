@@ -260,3 +260,762 @@ herramienta.
 
 El siguiente escalón real es un backend (Supabase o una función en Azure) para
 que el panel publique directo. Es otro proyecto y otro presupuesto.
+
+---
+---
+
+# Nivel 4 — decisiones añadidas
+
+## 18. Por qué NO hay efecto vidrio (liquid glass) en las tarjetas
+
+Se evaluó y se descartó. El motivo no es estético: rompe tres cosas medibles.
+
+**Contraste.** La tarjeta es `--crema` sólido con texto `--tx-oscuro`: el 14:1
+documentado en el punto 10. El vidrio sustituye ese fondo por translucidez, así
+que el contraste del nombre y del precio pasa a depender de lo que quede detrás
+—y **cambia con el scroll**. Un 14:1 fijo se convierte en una variable. Es WCAG
+1.4.3 incumplido de forma intermitente, que es la peor manera de incumplirlo:
+no se detecta en una captura de pantalla.
+
+**Rendimiento.** `backdrop-filter` obliga al compositor a re-samplear el fondo en
+cada frame. Con el filtro en "Todo" son 55 tarjetas a la vez. El público de una
+licorería de barrio a las 3 a.m. no está en un tope de gama.
+
+> El proyecto ya usa `backdrop-filter` en el nav, la barra de pedido y la
+> pantalla de edad. Son elementos **únicos**. Uno es gratis; 55 repetidos en un
+> grid, no. Por eso no sirven como precedente.
+
+**Von Restorff.** Meter atractivo visual en 55 elementos que compiten con el
+único CTA que importa va en contra de toda la sección 3.
+
+**Y Nielsen #2:** la tarjeta imita el cartel impreso del cliente. El vidrio
+esmerilado es lenguaje de sistema operativo, no de cartelería de licorería.
+
+**Lo que sí se puso:** un barrido de brillo en hover. Un gradiente que cruza la
+tarjeta — `transform` y `opacity`, que la GPU compone barato — sin translucidez
+bajo el texto. La misma sensación premium, cero costo de contraste.
+
+## 19. La tarjeta crece al apuntarla — y por qué solo un 3%
+
+`scale(1.03)`, no más. La tarjeta **contiene el botón "Agregar"**: al escalar, el
+botón se desplaza. Si crece demasiado, el objetivo se aleja del cursor mientras
+se apunta (Fitts al revés) y el borde puede salirse de debajo del puntero,
+encendiendo y apagando el hover en bucle. A 1.03 el desplazamiento es de unos
+3 px: se percibe, no estorba.
+
+Va detrás de `@media (hover:hover) and (pointer:fine)`. En táctil el `:hover` se
+queda pegado tras el tap: la tarjeta quedaría agrandada hasta tocar otra. El
+`:hover` anterior no tenía esa protección — con el escalado el defecto habría
+pasado de invisible a evidente.
+
+`prefers-reduced-motion` tiene bloque propio. El global solo acorta la
+transición, así que el salto de tamaño ocurriría igual, de golpe — justo lo que
+molesta con sensibilidad vestibular. Ahí se anula el transform y el brillo, y
+queda la sombra como única señal.
+
+## 20. El costo de delivery entra antes de enviar, no después
+
+El cliente elige su distrito en la vista previa del pedido. El costo se suma al
+total y viaja desglosado en el mensaje —subtotal, delivery, total.
+
+**Nielsen #1:** el cargo se ve antes de enviar. La alternativa es que el cliente
+mande el pedido creyendo que cuesta S/ 80 y la tienda le responda "más S/ 10 de
+envío". Eso no es un detalle de precio: es la primera respuesta de la tienda
+convertida en una mala noticia.
+
+**Nielsen #6:** el distrito elegido queda en `localStorage`. En la siguiente
+visita ya está puesto.
+
+**Salida productiva:** "Otro distrito" no bloquea nada — avisa que se coordina
+por WhatsApp. Un distrito fuera de cobertura sigue siendo un contacto.
+
+## 21. Hick sobre la lista de zonas
+
+43 distritos al mismo precio son 43 filas que dicen lo mismo. La sección de la
+landing los colapsa en una línea —"Reparto a 43 distritos de Lima Metropolitana ·
+S/ 10"— y vuelve a la lista sola en cuanto el dueño diferencia algún precio.
+
+La lista completa sigue estando en el selector del pedido, que es donde el
+usuario de verdad la necesita: ahí busca **su** distrito, no compara los 43.
+
+## 22. El panel de delivery asume 43 filas en un celular
+
+- **Buscador arriba:** llegar a "Surco" sin recorrer los 43.
+- **"Aplicar a todos" respeta el filtro activo,** igual que el ajuste de precios.
+  Cuando sube la gasolina, el costo sube parejo; sin esto son 43 campos a mano y
+  el dueño termina no actualizando ninguno.
+- **Desmarcar no borra:** el distrito se atenúa y conserva su costo. Se puede
+  reactivar sin recordar cuánto cobraba.
+- **Fila compacta, sin tarjetas ni sombras.** Es una herramienta: manda la
+  densidad.
+- **Nielsen #9:** el costo inválido se marca en su propio campo, y Guardar avisa
+  en vez de mandar datos malos al servidor.
+
+El servidor revalida todo igual —negativos, duplicados, montos absurdos— porque
+este número termina en el total que ve el cliente.
+
+---
+---
+
+# Nivel 5 — auditoría y correcciones
+
+Este bloque nace de medir lo que los niveles anteriores **afirmaban**. Tres
+afirmaciones del punto 10 resultaron falsas al comprobarlas en un navegador.
+Todas están corregidas y ahora se verifican solas en `tests/`.
+
+## 23. El distrito sale de la vista previa
+
+El selector vivía dentro de `.preview`, que arranca colapsada y se abre sola
+**una sola vez por sesión**. Si el cliente la cerraba, el botón "Enviar pedido"
+seguía activo y el mensaje salía sin delivery: total S/ 45.00 medido, sin línea
+de envío.
+
+Es exactamente el escenario que el punto 20 dice haber resuelto. El documento
+describía una intención; el código no la garantizaba.
+
+Ahora el selector es una fila propia de la barra de pedido, visible siempre que
+haya algo en el carrito. Y mientras no se elija:
+
+- La fila se tiñe de rojo tenue y la etiqueta dice **"Elige tu distrito"**.
+- El mensaje lleva **"(falta sumar el delivery)"** junto al total.
+
+**No se bloquea el botón de WhatsApp.** Nielsen #3: el control es del usuario.
+Alguien puede querer preguntar antes de decidir su zona, y la tienda prefiere
+ese mensaje incompleto a ningún mensaje. Se informa, no se impide.
+
+## 24. Objetivos táctiles: el documento decía 44 px y no era verdad
+
+Medido en móvil, con el área real del `<label>` contenedor y descartando lo
+invisible o inerte:
+
+| Elemento | Antes | Ahora |
+|---|---|---|
+| Filtros `.chip` | 42 px | 44 px |
+| Cantidad `+` / `−` | 42 px | 44 px |
+| Botella / Combo | 34 px | 44 px |
+| Enlaces del nav | 21 px | 44 px |
+| Teléfono del footer | 22 px | 44 px |
+| "o mira el catálogo…" | 22 px | 44 px |
+| Deshacer del aviso | 36 px | 44 px |
+| Logo del nav | 40 px | 44 px |
+
+En los enlaces de texto el área crece por `padding`, **no por tipografía**: si
+"o mira el catálogo…" creciera de tamaño competiría con el CTA verde, y eso
+rompería Hick y Von Restorff para arreglar Fitts.
+
+**Falso positivo que conviene registrar:** el botón flotante mide 39 px cuando el
+hero está a la vista, pero ahí tiene `opacity: 0` y `pointer-events: none`. No es
+un objetivo pequeño: no es un objetivo. Una auditoría que no descarta lo inerte
+inventa defectos.
+
+## 25. Foco visible: dos supresiones sin reemplazo
+
+El punto 10 decía "nunca suprimido". Había dos reglas que lo suprimían:
+
+- `.search input { outline: none }` — incondicional, y ganaba por especificidad
+  al `:focus-visible` global. El buscador no daba **ninguna** señal de foco.
+- `.distrito select:focus { outline: none; border-color: rojo }` — cambiaba un
+  borde de 1 px como única señal, en el control que define el total del pedido.
+
+Las dos ahora usan `:focus-visible` con el outline de 3 px del resto del sitio.
+
+## 26. La verificación de edad no contenía el foco
+
+Tenía `aria-modal="true"` y bloqueo de Escape, pero **el foco salía en la segunda
+tabulación**: con la pantalla de edad encima se llegaba al catálogo de atrás.
+
+`aria-modal` es una promesa a la tecnología asistiva, no un mecanismo. Ahora hay
+contención real, cíclica en ambos sentidos. Tratándose de la Ley N° 28681, la
+promesa tenía que ser verdad y no solo un atributo.
+
+## 27. Contraste del panel: la opacidad también cuenta
+
+El distrito desmarcado usaba `opacity: .45` sobre un texto de 14.48:1. La
+opacidad mezcla el color con el fondo: el contraste efectivo caía a **4.03:1**,
+bajo el 4.5 de AA. A `.7` queda en **7.85:1** y se sigue leyendo como apagado.
+
+Un ratio nominal alto no dice nada si algo lo atenúa después.
+
+## 28. Por qué esto se verifica solo
+
+Los defectos de los puntos 23 a 27 son invisibles desde el servidor: `curl`
+devuelve el mismo HTML con y sin ellos. `tests/` los comprueba en un navegador
+real, en escritorio y en móvil con touch, y falla si vuelven.
+
+Una afirmación de accesibilidad que nadie mide se convierte en falsa sin que
+nadie se entere.
+
+## 29. La barra fija medía mal el espacio que ocupa
+
+`--bar-h` es la altura que la barra de pedido le quita al contenido. La usan el
+`padding-bottom` del body, el aviso de deshacer y el botón flotante. Estaba
+escrita a mano como `82px` en JavaScript.
+
+Al mover el distrito a la barra, la altura real pasó a 136 px. El número no se
+enteró, y en móvil eso se veía así:
+
+- El pie de página quedaba **debajo** de la barra: el texto legal de la Ley
+  N° 28681 y el copyright no se podían leer.
+- El aviso de deshacer se dibujaba **encima** de la barra en vez de sobre ella,
+  tapando por completo la fila del distrito durante sus cuatro segundos. El
+  control que define el total quedaba invisible justo después de agregar algo.
+
+Ahora se mide: la barra completa menos la vista previa, redondeando hacia
+arriba una sola vez. Sumar las filas por separado dejaba fuera el borde superior
+de la barra y perdía un píxel; medir por diferencia sigue siendo correcto si
+mañana se le agrega otra fila.
+
+Se remide al girar el teléfono y al terminar de plegarse la vista previa: en
+plena transición se descuenta una altura intermedia y la reserva sale holgada.
+
+**Una constante que describe una medida del layout se vuelve mentira en cuanto
+alguien toca el layout.** Se mide o no se pone.
+
+De paso, en pantallas chicas: el total se partía en dos renglones —"S/" arriba,
+"45.00" abajo— y la fila del distrito se compactó para no comerse la pantalla.
+
+## 30. El panel decía siempre "Precios y stock"
+
+El encabezado no cambiaba con la pestaña: estando en Delivery seguía anunciando
+"Precios y stock" y explicando que los cambios "recién aparecen cuando le das a
+Publicar" — un botón que en esa pantalla no existe.
+
+Ahí se escondía una asimetría real: **solo Precios usa borrador.** Productos,
+Delivery y Banners publican al guardar. Nunca se había dicho, así que el dueño
+podía quedarse esperando un paso de publicación que ya había ocurrido, o creer
+que un cambio seguía en borrador cuando ya estaba en la web.
+
+Cada pestaña ahora dice qué es y cuándo sale a la web.
+
+**Sobre el verde del panel:** el `accent-color` de las casillas de reparto usa
+`--verde`, que ya marcaba el switch de stock (verde sí / rojo no). No contradice
+la regla de Von Restorff del punto 3: esa reserva el verde para WhatsApp en la
+**landing**, y el panel no comparte hoja de estilos ni tiene botones de WhatsApp.
+Dentro del panel, verde significa activo, y significa lo mismo en los dos sitios
+donde aparece.
+
+## 31. La regla del verde, ahora verificada y no solo declarada
+
+El punto 3 dice que el verde `--wa` se reserva para lo que abre WhatsApp. Era una
+declaración en un comentario de CSS: nada impedía romperla.
+
+Medido en el navegador, recorriendo cada elemento pintado en los estados por los
+que pasa el cliente —hero, catálogo, con pedido, pie de página— en móvil y
+escritorio:
+
+| Estado | Verde en pantalla | Área |
+|---|---|---|
+| Hero, sin pedido | `#heroWa` | 17 096 px² |
+| Catálogo, sin pedido | `#float` | 3 136 px² |
+| Catálogo, con pedido | `#barWa` | 12 688 px² |
+| Pie, con pedido | `#closeWa` + `#barWa` | 21 219 + 12 688 px² |
+
+**Cero intrusos.** Todo lo verde abre WhatsApp, y en todos los estados hay al
+menos un llamado a la vista. El único caso con dos verdes simultáneos es el
+cierre, donde ambos van al mismo sitio: se refuerzan, no compiten.
+
+El flotante desaparece cuando el hero está a la vista y cuando hay pedido
+(`body[data-cart="on"]`), así que nunca hay dos CTA verdes distintos peleándose.
+Esa lógica **estuvo rota** hasta el nivel 4: el `ReferenceError` de
+`animarEntrada` impedía que corriera el observador, y el flotante se quedaba
+encima del botón del hero de forma permanente.
+
+Contraste del texto sobre el botón: **8.38:1**, muy por encima del 4.5 de AA.
+
+Ahora hay una prueba que recorre esos estados y falla si aparece verde en algo
+que no lleve a `wa.me`. Se comprobó pintando el botón "Agregar" de verde: la
+prueba lo detectó en los tres botones visibles.
+
+**Sobre el barrido de brillo del punto 18:** es blanco, dura 0,6 s, solo existe
+con puntero fino y solo en la tarjeta apuntada. No compite con el verde, que es
+un color saturado, permanente y siempre presente en pantalla. Un destello
+momentáneo en un elemento no altera la jerarquía de color del punto 3.
+
+---
+---
+
+# Nivel 6 — pedidos del cliente
+
+Este bloque es distinto a los anteriores. No sale de una auditoría: sale de tres
+cambios que **pidió el dueño del negocio** y que en parte van en contra de lo que
+recomienda la heurística. Están hechos igual —es su web y es su decisión— y lo
+que se documenta acá es qué cuesta cada uno y qué se hizo para que costara lo
+menos posible.
+
+## 32. Dos carruseles de cinco, uno debajo del otro
+
+Lo pedido: dos carruseles de cinco banners en lugar de uno, **el segundo debajo
+del primero**.
+
+Lo que cuesta, medido en un móvil de 390 px: cada banner de 1200×500 ocupa 146 px
+de alto más 44 de puntos. Los dos carruseles llenos meten **380 px entre el hero
+y el catálogo**, y el catálogo pasa a estar a dos pantallas y media de scroll
+desde arriba. El cliente entra a comprar y lo primero que encuentra son avisos.
+
+Se propuso separarlos —uno antes del catálogo y otro después— y el cliente los
+quiere juntos. Van juntos.
+
+Lo que se hace para amortiguarlo:
+
+| | |
+|---|---|
+| **Carga diferida** | Solo el primer banner del primer carrusel se pide con prioridad. Los otros nueve son `loading="lazy"`: no compiten con lo que hay que ver primero |
+| **El menú salta los dos** | El enlace "Catálogo" lleva directo a la grilla por encima de los banners. Es la salida rápida del que vino a comprar, y se comprueba en la prueba |
+| **Ninguno aparece vacío** | Si el dueño solo llena el de arriba, el de abajo no existe. Sin banners no hay hueco ni puntos |
+
+**Detalle que ya estaba mal y salió acá:** los puntos del carrusel se marcaban
+con un `querySelectorAll('.punto')` global. Con una sola pista funcionaba; con
+dos, desplazar la de abajo habría marcado los puntos de la de arriba. Ahora cada
+carrusel busca los suyos.
+
+**Detalle que ya estaba mal y salió acá:** los puntos del carrusel se marcaban
+con un `querySelectorAll('.punto')` global. Con una sola pista funcionaba; con
+dos, desplazar la de abajo habría marcado los puntos de la de arriba. Ahora cada
+carrusel busca los suyos.
+
+**Los puntos ahora se tocan.** Medían 9×9 px — la mitad de la mitad de lo que
+pide la WCAG 2.5.5. Se separó lo que se dibuja de lo que se toca: el botón mide
+44×44 y el círculo de 9 px es un pseudoelemento adentro. Agrandar el círculo
+habría convertido los puntos en botones y le habrían competido la atención al
+banner, que es lo que hay que mirar. Nunca falló en la prueba de objetivos
+táctiles porque sin banners cargados el carrusel no existe: habría aparecido
+recién el día que el dueño subiera el primero.
+
+## 33. El buscador en lugar de "Abierto ahora"
+
+El sello del nav era el punto 11: el estado del sistema como propuesta de valor,
+Nielsen #1. Se va.
+
+Lo que se pierde es menos de lo que parece, porque el 24/7 se dice en otros tres
+sitios que no se tocaron: la franja roja de arriba, el titular del hero y el
+párrafo con **la hora del propio cliente** ("Son las 8:52 a. m. y estamos
+atendiendo"), que es el que de verdad lo hace verificable. El sello era el
+recordatorio, no la prueba.
+
+Lo que se gana es real: 55 productos con un solo filtro por categoría. Un
+buscador en la barra fija es el atajo que la Ley de Hick pide cuando la lista es
+larga.
+
+**Hay dos campos de búsqueda y es a propósito.** El del nav no reemplaza al del
+catálogo porque en móvil el nav se pliega, y nadie debería tener que abrir un
+menú para buscar. Son dos vistas del mismo estado: se copian el texto entre sí y
+filtran la misma grilla. Si dijeran cosas distintas, el cliente vería resultados
+filtrados por algo que no está escrito en el campo que tiene delante — Nielsen #4
+roto de la peor manera, en silencio.
+
+**Buscar desde el nav trae el catálogo a la pantalla.** Sin eso, escribir en la
+barra fija mientras se mira el hero es teclear a ciegas: el filtro corre y no se
+ve nada. Solo se desplaza si el catálogo no está ya a la vista y solo con algo
+escrito.
+
+## 34. El menú hamburguesa en móvil
+
+Esto sí es una pérdida y conviene decirlo sin adornos. Esconder la navegación
+detrás de un icono contradice Nielsen #6 —reconocer en vez de recordar—: lo que
+está a la vista se usa; lo que hay que ir a buscar, no. Es una decisión del
+cliente y se hizo.
+
+Lo que se cuidó para que costara lo menos posible:
+
+| | |
+|---|---|
+| **Se anuncia** | `aria-expanded` en el botón, no una clase suelta. El lector de pantalla dice si está abierto |
+| **Se sale** | Escape lo cierra y devuelve el foco al botón. Tocar fuera también (Nielsen #3) |
+| **Se cierra al elegir** | Si no, el panel tapa justo la sección a la que acaba de saltar |
+| **El foco entra** | Al abrir, el foco va a la primera opción: quien navega con teclado no queda tabulando a ciegas |
+| **44 px** | El botón mide 44×44 exactos; las opciones del panel, 52 de alto |
+| **El icono dice el estado** | Las tres barras se vuelven una X. El mismo control cierra, sin agregar un segundo botón |
+| **Opaco** | Fondo sólido, no traslúcido como el nav: detrás pasa el titular del hero y con transparencia el contraste deja de ser el calculado |
+
+**Lo que NO se escondió:** el buscador del catálogo sigue a la vista en móvil sin
+abrir nada, y el botón flotante de WhatsApp tampoco está en el menú. El acceso a
+comprar y el acceso a escribir no dependen de que el cliente descubra la
+hamburguesa.
+
+**Promoción no está en el menú de móvil.** El pedido fue "solo el logo y
+catálogo". La sección sigue existiendo y la franja roja la anuncia en todas las
+pantallas; devolverla al menú es quitar una clase.
+
+El panel no es un modal y no atrapa el foco: es un menú desplegable y tabular
+fuera de él es una salida legítima, no un escape.
+
+## 35. El logo en lugar del titular
+
+Lo pedido: que el hero muestre el logo del negocio en vez de "A la hora que sea".
+
+Lo que cuesta. Un titular dice a qué vino uno; un logotipo dice quién eres. El
+visitante que llega de una búsqueda y ve un logo tiene que deducir el resto. Y
+si el `<h1>` pasa a ser una imagen, la página se queda sin encabezado de texto:
+Google lee el encabezado para entender de qué trata, y un lector de pantalla lo
+usa para orientar a quien no ve la imagen. Es decisión del cliente y está hecho.
+
+Lo que se hace para que no se pierda nada de eso:
+
+| | |
+|---|---|
+| **Sigue siendo el `<h1>`** | El logo va dentro del encabezado, no lo reemplaza. El documento conserva su estructura y sigue habiendo uno solo |
+| **El `alt` carga el mensaje** | "Boleto Licorería · licorería abierta las 24 horas, todos los días". Es lo que leen Google y el lector de pantalla, y es la frase que antes llevaba el titular |
+| **El párrafo lo repite en pantalla** | "Tienda y WhatsApp abiertos las 24 horas… Son las 9:29 a. m. y estamos atendiendo". Quien sí ve la imagen tampoco se queda sin saber a qué llegó |
+| **Si no carga, vuelve el texto** | Un `onerror` devuelve el titular "A la hora que sea". Un `<h1>` con una imagen rota es un `<h1>` vacío |
+
+**El logo trae su propio fondo.** Es azul marino `#000828` con letras crema — el
+mismo azul del sitio, con dos puntos de diferencia. Sobre la chapa crema del hero
+queda como una placa, y así es como se lee: recortarle el fondo dejaría letras
+crema sobre crema, invisibles. La placa lleva las mismas esquinas redondeadas que
+el resto para que se vea decidida y no pegada.
+
+**Pesaba 194 KB.** El `logo.svg` era un PNG en base64 dentro de un SVG, y el
+base64 infla un tercio. Convertido a WebP sin pérdida: **62 KB**, un 68 % menos,
+sin tocar un solo píxel. Importa porque es el elemento más grande del hero — es
+el que mide el LCP, y esta web se abre desde datos móviles a las tres de la
+mañana. Lleva `width`, `height` y `fetchpriority="high"`: se pide temprano y
+reserva su espacio antes de cargar, así el resto del hero no salta.
+
+## 36. Qué se verifica solo de todo esto
+
+59 comprobaciones nuevas en `tests/flujo-pedido.js`, sobre las 40 que ya había:
+
+- El sello ya no está y el buscador ocupa su lugar
+- Escribir en el nav filtra la grilla y el otro campo repite el texto; borrar en
+  uno limpia el otro
+- En escritorio no hay hamburguesa y el menú sigue desplegado
+- En móvil: el botón mide 44, el menú arranca plegado y lo dice, abre, el foco
+  entra, Escape cierra y devuelve el foco, elegir cierra
+- El buscador del catálogo se ve sin abrir el menú
+- El logo del hero es el `<h1>`, es el único, su `alt` menciona las 24 horas y la
+  imagen carga de verdad — si fallara, el encabezado quedaría vacío y nadie se
+  enteraría
+- Cada banner cae en su carrusel, el segundo va debajo del primero, cada uno
+  tiene sus puntos, mover uno no marca los del otro, los puntos se tocan a 44 px
+  y el enlace "Catálogo" salta por encima de los dos
+- Ninguna pieza de marca queda rota, el isotipo está en el nav y en el pie, los
+  tres iconos están y cada uno recorta su silueta con la máscara del SVG
+- El mensaje de WhatsApp detalla de qué está compuesto el combo, y lo que el
+  panel desmarcó no viaja al navegador
+- Buscar desde el nav deja resultados a la vista, pasa el cursor al buscador del
+  catálogo y seguir escribiendo no mueve la página — se escribe tecla por tecla,
+  porque con `fill()` el defecto no aparecía
+- Volver a entrar arranca en el inicio, y un enlace con ancla sigue mandando
+- Las flechas del carrusel miden 44 px, pasan de banner, se apagan en los
+  extremos, y "Ver los que aplican" filtra el catálogo a los productos en promoción
+
+Los carruseles se prueban **inyectando banners en la respuesta**, porque la base
+todavía no tiene ninguno cargado. Sin eso, la función quedaría sin probar hasta
+que el dueño subiera el primero — que es tarde para enterarse de que algo no
+funciona.
+
+## 37. El kit de marca
+
+Llegó el kit oficial: logos en cinco variantes de color, isotipo, tres iconos y
+el manual. Hasta entonces la web funcionaba con placeholders — un sello con la
+letra "B" y un logo que era un PNG metido en un SVG.
+
+**Qué variante va en cada sitio, y por qué importa.** El kit trae el logo en azul
+y en marfil porque están pensados para fondos opuestos. La chapa del hero es
+crema: ahí va el azul. Si se pusiera el marfil se leerían letras crema sobre
+crema. Es la misma razón por la que el modal de verificación de edad cambió: traía
+el archivo con fondo propio y dibujaba un rectángulo oscuro dentro de una tarjeta
+clara.
+
+**Los iconos se pintan como máscara, no como imagen.** Un `<img>` no puede
+heredar el color del texto que lo acompaña; una máscara sí. Con un solo archivo,
+el carrito sale crema en la barra de pedido y el acompañante sale azul sobre la
+chapa de la promoción. La regla va dentro de un `@supports`: si el navegador no
+soporta máscaras el icono no se dibuja, en vez de dejar un cuadrado de color
+donde debería haber una silueta.
+
+**Van donde significan algo.** El carrito en el resumen del pedido, el hielo en
+la sección que pregunta si se acabó el hielo a las 3 a.m., el acompañante en la
+promoción de la gaseosa gratis. Tres iconos, una instancia cada uno. Repartirlos
+por decoración los habría convertido en ruido y habría competido con lo único
+que tiene que destacar, que es el verde de WhatsApp (punto 3).
+
+**Al logo se le ciñó el `viewBox`.** El arte mide 909×624 dentro de un lienzo de
+1046×1030 — el 40 % del alto es vacío que el exportador dejó. En el hero eso
+salía como un bache entre el logo y la filigrana. Ceñirlo al arte con un 1 % de
+margen lo arregla sin tocar el dibujo.
+
+**La paleta pasó a la del manual**, leída de los propios SVG: azul `#000625` y
+rojo `#CF2026`, contra los `#000725` y `#C8102E` que se habían elegido a ojo
+antes de que hubiera manual. Medido antes de aplicarlo: el rojo de marca sobre
+crema da **4.80:1**, por encima del 4.5 de AA — más justo que el 5.22 anterior,
+pero cumple, y es el color de la marca.
+
+**El crema se mantiene.** El marfil del manual es `#FEFCEC`, casi blanco.
+Aplicarlo aclararía toda la chapa del hero y las tarjetas de promoción, que es un
+cambio de aspecto que nadie pidió. Queda anotado por si el cliente lo prefiere:
+es una variable.
+
+**El service worker subió a `boleto-v2`.** Un service worker sirve de su caché
+antes de mirar la red: sin subir la versión, quien ya había entrado seguiría
+viendo el logo viejo hasta vaciar el navegador. Es el tipo de detalle que no
+falla en desarrollo —donde nadie tiene caché— y falla para todos los demás.
+
+## 38. El combo dice de qué está hecho
+
+Lo pedido: que la pestaña de precios permita definir el **aditivo** —gaseosa,
+ginger, cualquier acompañante— y el **hielo** que componen el combo, cada uno con
+su precio y una casilla de si va o no va.
+
+**Va como segunda línea de la fila, no como dos columnas.** Son seis controles
+nuevos por producto. El panel se usa desde el celular, en la tienda: en columnas
+no entran, y en un teléfono de 390 px el nombre "Coca Cola 1.5 L" no cabe al lado
+de la casilla y del precio. En línea aparte se lee igual en el teléfono y en el
+escritorio. Solo aparece en los productos que tienen combo, igual que el campo de
+precio de combo ya venía deshabilitado sin él.
+
+**Apagar no borra.** La casilla saca el ítem del combo pero conserva el nombre y
+el precio. Cuando se acaba la gaseosa se desmarca; cuando llega, se vuelve a
+marcar sin tener que escribir nada. Un borrado obligaría a recordar qué decía.
+
+**El precio de cada parte no se publica.** No aparece en la web ni en el mensaje:
+sirve para que el dueño vea, al lado del campo del combo, la cuenta
+`botella + aditivo + hielo = S/ X · el combo cobra S/ Y menos`. Es la pregunta que
+se hace al fijar un combo —cuánto estoy regalando— y hasta ahora la tenía que
+hacer de memoria. El panel no decide el precio: pone el dato al lado.
+
+**Lo apagado no viaja al navegador.** El catálogo público manda el nombre vacío en
+vez de mandarlo y esconderlo con JavaScript. Es una página pública: lo que no se
+muestra tampoco tiene que estar en su HTML, y la web no debería decidir algo que
+ya está decidido en el panel.
+
+**Marcado sin nombre se bloquea.** Un combo que anuncia que incluye algo sin decir
+qué termina en el mensaje de WhatsApp del cliente. Se señala en el campo, se
+impide publicar, y el servidor lo vuelve a revisar — el navegador no es la
+autoridad.
+
+**El mismo error de `ProductoActivo`, otra vez a punto de pasar.** La migración
+crea los dos flags con `defaultValue: false`, y ese es exactamente el valor que
+habría apagado el aditivo y el hielo de los **18 combos que ya existen**: el
+cliente dejaría de ver qué incluye el suyo y nadie se enteraría hasta compararlo
+con el catálogo impreso. La migración los enciende donde ya había un nombre
+guardado, que es lo que la web venía mostrando. El precio se queda en 0, que es
+un dato nuevo que solo el dueño puede saber.
+
+**El nombre se puede editar en dos sitios** —acá y en el editor de producto— así
+que al guardar en el editor, la pestaña de precios adopta el nombre nuevo. Sin
+eso seguiría mostrando el viejo y al publicar lo devolvería, pisando en silencio
+lo que se acababa de guardar.
+
+## 39. Banners de arranque
+
+Los carruseles estaban vacíos: la función existía y no se veía funcionar. Se
+cargaron cuatro piezas del propio cliente —sus artes de Instagram— dos arriba y
+dos abajo. Dos y no una por carrusel porque con un solo banner no hay puntos ni
+deslizamiento, y no se vería que la pista funciona.
+
+**Las piezas son 4:5 y el banner es apaisado.** Se recortaron a 4:3, que es lo más
+apaisado que admiten sin cortarles el bloque de precio, con el desplazamiento
+vertical ajustado pieza por pieza porque cada una lo coloca a otra altura. La
+recomendación del panel pasó de 1200×500 a 1200×900 para que coincida con lo que
+ya está cargado: dentro de un mismo carrusel, un tamaño distinto hace saltar la
+pista.
+
+**Se siembran solo si la tabla está vacía**, igual que las zonas de reparto. Son
+artes del cliente, no relleno, pero llevan precios de un momento dado: el dueño
+los reemplaza desde el panel y el seed no vuelve a tocarlos.
+
+## 40. Tres defectos que reportó el dueño
+
+**El buscador suelto del panel estaba pegado a la grilla.** En "Productos y fotos"
+el hueco entre el campo y la primera foto medía **0 px**. En "Precios y stock" no
+pasaba porque entre medio hay filtros y contador. Se le da margen al buscador que
+va suelto dentro de una pestaña; el que vive dentro de `.tools` no lo necesita,
+ahí ya separa el gap de la columna.
+
+**El buscador del nav "no filtraba y se movía".** Filtraba —medido, 55 tarjetas a
+3— pero el cliente no llegaba a verlo. Tres causas, encontradas midiendo:
+
+1. **El repintado arrastraba la vista.** Al reemplazar la grilla, el navegador
+   vuelve a poner a la vista el elemento con el foco. El buscador del catálogo
+   está en el flujo normal, pegado a la grilla, y no mueve nada — por eso ese
+   nunca falló. El del nav vive dentro de una barra `position: sticky`, y la
+   posición de maquetado de una barra pegajosa está arriba de todo: **72 px
+   exactos por tecla** hacia el inicio, sin una sola llamada de scroll y sin que
+   cambiara el alto de la página. Escribiendo "johnnie", la vista terminaba de
+   vuelta en el hero.
+
+2. **`behavior: 'auto'` no es instantáneo.** Significa "usa lo que diga el CSS", y
+   el CSS de esta página dice `scroll-behavior: smooth`. El salto al catálogo
+   tardaba 900 ms y cada tecla le cortaba la animación a media carrera. El valor
+   que salta de una es `'instant'`.
+
+3. **En móvil el panel tapa lo que muestra.** Se escribía en un buscador que
+   ocupa la pantalla y los resultados quedaban detrás.
+
+La solución no fue pelearle al navegador —devolver la vista a su sitio después de
+cada repintado no alcanza, el arrastre no ocurre en un solo cuadro— sino que el
+buscador del nav haga lo que de verdad es: **una puerta de entrada**. Con la
+primera letra lleva al catálogo y le pasa el texto y el cursor a su buscador, que
+está junto a los resultados. De ahí en adelante se escribe donde el problema no
+existe, y de paso el foco queda al lado de lo que cambia, que es lo que
+corresponde. **En móvil directamente no está**: se busca en el del catálogo, que
+está a la vista sin abrir nada, y el panel queda con lo que pidió el cliente —
+solo el logo y el catálogo.
+
+Se apunta al contador ("3 productos") y no al inicio de la sección: con el
+titular, la filigrana, el buscador y los filtros por medio, llevar a la sección
+dejaba la grilla 128 px por debajo del pliegue. Y la grilla reserva alto
+(`min-height`) para que filtrar no acorte la página de golpe — se anula cuando
+queda vacía, o el "No encontramos eso" se iba al fondo de una pantalla en blanco.
+
+**Entrar por el medio de la página.** El navegador guarda el scroll de la visita
+anterior y lo restaura al volver. En una tienda que se abre y se cierra varias
+veces al día —y encima instalada como app— el cliente entraba a media página y
+nunca veía el titular ni el botón de WhatsApp del hero: medido, volvía a
+**2567 px**, tres pantallas abajo, directo a los banners. Se apaga la
+restauración y se arranca arriba. Si el enlace trae un ancla se respeta: ahí el
+destino lo pidió quien mandó el enlace, no el navegador.
+
+## 41. Los carruseles son la sección de promoción
+
+Antes había dos cosas anunciando lo mismo: una tarjeta hecha a mano —"Coca Cola
+1.5 L gratis"— y, encima, los banners del propio cliente diciendo exactamente eso
+con sus fotos y sus precios. Dos anuncios de la misma promoción se restan en vez
+de sumarse. Los carruseles pasan a ocupar esa sección y la tarjeta se va.
+
+El `id="promo"` se queda: es el destino del enlace "Promoción" del menú, y ahora
+apunta a donde están las promociones de verdad. Lo único que sobrevive de la
+tarjeta es **"Ver los productos que aplican"**, que filtra el catálogo a los 15
+productos con la Coca Cola gratis. Un banner anuncia; ese botón lleva a comprarlo,
+y no tenía otro sitio donde vivir.
+
+La sección entera se rinde solo si hay banners cargados: sin promociones no queda
+un título flotando sobre nada.
+
+**Las imágenes entran.** Las piezas del cliente son casi cuadradas (4:3) y a todo
+el ancho un solo banner medía **885 px de alto** — se comía la pantalla entera y
+había que pasar dos afiches a scroll antes de ver un producto. Acotadas a 560 px
+de ancho se leen como lo que son, un afiche, y entran los dos con el catálogo
+asomando debajo. Medido en un móvil de 390: el catálogo pasó de estar a 2172 px
+del inicio a estar a **1839**, con la sección de promoción completa por delante.
+
+**Flechas.** Deslizar con el dedo ya funcionaba, pero en escritorio no hay dedo y
+los puntos son un objetivo chico para "la siguiente". Van sobre la foto, que es
+donde se las busca (Ley de Jakob), miden 44 px y son marinas: el rojo es de la
+marca y el verde está reservado para WhatsApp (punto 3).
+
+En el extremo la flecha **se apaga, no se quita**. Si desapareciera, la otra
+cambiaría de sitio y habría que volver a buscarla — un objetivo que se mueve es
+un objetivo que se falla (Fitts). Y solo existen si hay a dónde ir: con un solo
+banner cargado no aparecen dos botones que no hacen nada.
+
+## 42. La fila del distrito, cerrada la vista previa
+
+El selector de distrito vive fuera de la vista previa desde el punto 23, para que
+el costo de envío se vea siempre. Con la vista previa **abierta** se leía como su
+continuación. **Cerrada** no: quedaba un rectángulo de fondo más claro flotando
+dentro de una barra negra a sangre, con dos bordes verticales que no coincidían
+con nada. Medido en 1707 px: la caja arrancaba en 264 y la barra en 0.
+
+Era `max-width: var(--max)` con fondo propio. Ahora el fondo va a sangre y el
+relleno lateral reproduce el centrado del contenedor de al lado
+—`max(20px, calc((100% - var(--max)) / 2 + 20px))`— así que la etiqueta "Tu
+distrito" arranca exactamente donde arranca el total, sin necesitar un envoltorio
+extra en el marcado.
+
+De paso, el desplegable tenía 1180 px de ancho para mostrar un nombre de
+distrito. Se le puso tope de 440; en móvil sigue estirándose a lo que haya.
+
+Lo comprueba la prueba: la fila ocupa el ancho de la barra y arranca a la misma
+altura que el total.
+
+## 43. El logo de la portada, desde el panel
+
+Lo pedido: que el dueño pueda cambiar el logo del hero, "por si alguna vez se le
+ocurre poner otra imagen allí". Va en la pestaña de imágenes, no en una pestaña
+propia: es una sola imagen y una pestaña para un campo es una pestaña que nadie
+abre.
+
+La pestaña pasó a llamarse **"Imágenes"** y no "Banners": guarda dos cosas
+distintas y llamarla por una sola escondía la otra. Dentro, dos bloques con
+título — "Logo de la portada" y "Banners de promoción" — y el del logo dice
+explícitamente **"no es un banner: hay una sola y no se desliza"**, que es la
+confusión que el nombre anterior provocaba.
+
+**La vista previa va sobre crema.** Es el fondo real de la portada. Sobre el
+fondo oscuro del panel, un logo claro se vería perfecto y sería invisible en la
+web: es el error más fácil de cometer y el más difícil de notar desde el panel.
+La guía lo dice también, en palabras: *"El fondo de la portada es color crema: un
+logo blanco o marfil ahí no se ve"*.
+
+**Se mide sola.** El logo es el elemento más grande de la primera pantalla — el
+que decide el LCP — y su tamaño tiene que ir declarado en el HTML o el hero salta
+al terminar de cargar. En vez de pedirle las medidas al dueño, se leen de la
+cabecera del archivo al subirlo: PNG en el IHDR, WebP en sus tres codificaciones,
+JPEG recorriendo segmentos hasta el SOF. Sin librería de imágenes, sobre los
+mismos bytes que ya se leían para comprobar que el archivo es lo que dice ser. Si
+el formato no se pudo leer, el aviso lo dice en vez de callarlo: *"No se pudo leer
+su tamaño: puede que la portada salte al cargar"*.
+
+**Siempre hay vuelta atrás.** "Volver al logo oficial" restaura el del kit. El
+logo oficial nunca se toca: vive en `assets/` y el subido va al almacén, así que
+no hay forma de quedarse sin portada.
+
+**Las recomendaciones van plegadas** (`<details>`), no en un párrafo suelto: quien
+ya sabe no las abre y quien no, las tiene ahí. Están las del logo y las de los
+banners, cada una con medida, resolución, formato, peso y el error típico de cada
+caso — para los banners, que las artes de Instagram hay que recortarlas antes a
+1200×900 o se cortan solas por donde no conviene.
+
+## 44. Un combo que no decía de qué estaba hecho
+
+Al revisar por qué el número de combos había subido de 18 a 19, el registro de
+auditoría mostró que el dueño le había puesto combo a un producto: *Sprite 1.5 L*
+y *Hielo 3 kg*, guardados desde el editor de producto.
+
+En la web salía vacío.
+
+El editor escribía el nombre pero nunca encendía la casilla de "va en el combo",
+que vive en la pestaña de precios y nace apagada. Resultado: la auditoría lo
+registraba, el panel lo mostraba escrito y el cliente no lo veía. El caso peor de
+todos — el sistema decía que sí en todas partes menos donde importa.
+
+Se arregló en dos partes. **Guardar desde el editor afirma la composición**: lo
+que quede escrito, va incluido. El apagado temporal —se acabó la gaseosa— se hace
+en la pestaña de precios, que es donde se mira el día a día. Y una **migración
+repara lo ya guardado**, que el arreglo del código no alcanzaba a tocar: enciende
+donde hay nombre y la casilla apagada. Es seguro hacerlo ahora porque la pestaña
+que permite apagar a mano se estrenó con esta misma tanda y todavía no ha llegado
+a producción: no hay ninguna decisión deliberada que pisar.
+
+Ahora la prueba falla si algún combo no dice de qué está hecho. Lo habría cazado
+el mismo día.
+
+## 45. Sin salida en el panel del teléfono
+
+Una regla escondía en móvil el enlace "Ver la web", que es una comodidad. El
+botón "Salir" llevaba **la misma clase** y la regla se lo llevó por delante: en el
+teléfono no había forma de cerrar sesión.
+
+Es peor de lo que parece dicho así. El panel se usa desde el celular, en la
+tienda, a veces con un teléfono que no es el propio, y la sesión dura ocho horas.
+Quedarse dentro sin poder salir no es una molestia de diseño: es una sesión
+abierta en un aparato ajeno.
+
+Ahora se esconde solo "Ver la web" —la web se abre igual desde el navegador— y
+"Salir" se queda siempre. De paso, el enlace medía **26×19 px** en escritorio,
+por debajo incluso del mínimo de 24 de la WCAG 2.5.8. Se le da el área con
+relleno y no con letra más grande, igual que en el nav de la web pública: 44×44
+en todos los tamaños.
+
+Hay prueba nueva: entra al panel desde un viewport de teléfono, comprueba que
+"Salir" se ve y se puede tocar, lo toca, y vuelve a `/panel` para confirmar que
+la sesión se cerró **de verdad** y no solo de vista. Necesita credenciales; sin
+ellas se salta en vez de fallar, para que la prueba corra igual en una máquina
+sin el panel configurado.
+
+## 46. El buscador vuelve al menú del teléfono
+
+Se había escondido porque escribir ahí no mostraba nada: el propio panel ocupa la
+pantalla y tapa la grilla. La conclusión de entonces —"buscar desde un menú que
+cubre la pantalla no tiene sentido"— era la conclusión equivocada. No era el
+sitio lo que estaba mal, era lo que pasaba después.
+
+Ahora la primera letra **cierra el menú**, lleva al catálogo y le pasa el texto y
+el cursor a su buscador. Es el mismo traspaso que arregló el de escritorio en el
+punto 40; lo que faltaba era cerrar la cortina.
+
+Un detalle del orden de las operaciones: el foco salta al otro campo **antes** de
+cerrar el menú. Si el campo que tiene el foco desaparece primero, el teclado del
+teléfono se baja y hay que volver a tocar para seguir escribiendo.

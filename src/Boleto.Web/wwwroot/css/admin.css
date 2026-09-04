@@ -9,7 +9,7 @@
     --marino-3: #1C2A5C;
     --crema: #F7F1E3;
     --crema-2: #E7DDC6;
-    --rojo: #C8102E;
+    --rojo: #CF2026;
     --ambar: #E0A32E;
     --verde: #1E9E5A;
     --tx-claro: #F7F1E3;
@@ -89,17 +89,13 @@ a {
     gap: 10px
 }
 
-.logo__mark {
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    background: var(--rojo);
-    color: var(--crema);
-    display: grid;
-    place-items: center;
-    font-family: var(--display);
-    font-weight: 700;
-    font-size: 1.15rem
+/* El isotipo del kit de marca, el mismo que en la web pública: el
+   dueño entra al panel y ve su marca, no una inicial provisional. */
+.logo__img {
+    width: 38px;
+    height: 38px;
+    flex-shrink: 0;
+    display: block
 }
 
 .logo__txt {
@@ -139,7 +135,16 @@ a {
         color: var(--ambar)
     }
 
+/* El texto mide 19 px de alto; el objetivo mínimo son 44. Se gana con
+   relleno y no agrandando la letra: se ve igual y se acierta mejor. Es
+   lo mismo que hace el nav de la web pública. */
 .link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    min-width: 44px;
+    padding-inline: 8px;
     font-size: .83rem;
     font-weight: 500;
     color: var(--tx-tenue);
@@ -155,7 +160,13 @@ a {
         display: none
     }
 
-    .link {
+    /* Se esconde "Ver la web", que es una comodidad: la web se abre
+       igual desde el navegador.
+
+       "Salir" NO. Llevaba la misma clase y la regla se llevaba las dos
+       por delante: en el teléfono no había forma de cerrar sesión, y el
+       panel se usa desde el celular, en la tienda, a veces prestado. */
+    .top__in > a.link {
         display: none
     }
 }
@@ -210,6 +221,13 @@ a {
 
     .search:focus-within {
         border-color: var(--ambar)
+    }
+
+    /* Un buscador suelto —el de Productos y fotos— quedaba a 0 px de la
+       grilla, pegado. Dentro de .tools no lleva margen: ahí ya separa el
+       gap de la columna. */
+    .panel > .search {
+        margin-bottom: 22px
     }
 
     .search svg {
@@ -393,6 +411,115 @@ a {
         min-height: 1em;
         font-variant-numeric: tabular-nums
     }
+
+/* ══════════════════════════════════════════════════════════════
+   COMPOSICIÓN DEL COMBO
+   Segunda línea de la fila, a lo ancho. En columnas no entra: son
+   seis controles más por producto y esto se usa desde el celular.
+   ══════════════════════════════════════════════════════════════ */
+.combo {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 4px;
+    padding-top: 12px;
+    border-top: 1px dashed var(--marino-3)
+}
+
+.combo__t {
+    font-size: .68rem;
+    font-weight: 600;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--tx-tenue)
+}
+
+    .combo__t small {
+        font-weight: 400;
+        letter-spacing: 0;
+        text-transform: none
+    }
+
+.combo__suma {
+    font-size: .74rem;
+    color: var(--tx-tenue);
+    font-variant-numeric: tabular-nums
+}
+
+/* Una parte del combo: si va, cuál es y cuánto cuesta suelta. */
+.adit {
+    display: grid;
+    grid-template-columns: auto 1fr 104px;
+    gap: 10px;
+    align-items: center
+}
+
+    /* Apagado sigue leyéndose, pero sin pedir atención: el dato no se
+       borró, solo no entra en el combo. */
+    .adit[data-on="false"] .adit__n,
+    .adit[data-on="false"] .adit__p {
+        opacity: .5
+    }
+
+.adit__sw {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 44px;
+    min-width: 108px;
+    font-size: .84rem;
+    cursor: pointer
+}
+
+    .adit__sw input {
+        width: 22px;
+        height: 22px;
+        accent-color: var(--ambar);
+        flex-shrink: 0;
+        cursor: pointer
+    }
+
+.adit input[type="text"],
+.adit input[type="number"] {
+    min-height: 44px;
+    width: 100%;
+    background: var(--marino);
+    border: 1px solid var(--marino-3);
+    border-radius: 9px;
+    padding: 8px 11px;
+    color: var(--tx-claro);
+    font-size: .9rem
+}
+
+.adit input[type="number"] {
+    font-weight: 600;
+    text-align: right;
+    font-variant-numeric: tabular-nums
+}
+
+.adit input:focus {
+    outline: none;
+    border-color: var(--ambar)
+}
+
+.adit input.mal {
+    border-color: var(--rojo);
+    background: rgba(207,32,38,.12)
+}
+
+@media(max-width:620px) {
+    /* En el teléfono el nombre necesita el ancho entero: "Coca Cola
+       1.5 L" no entra al lado de la casilla y del precio. */
+    .adit {
+        grid-template-columns: 1fr 104px
+    }
+
+    .adit__sw {
+        grid-column: 1 / -1;
+        min-height: 32px
+    }
+}
 
 .sw {
     display: flex;
@@ -1192,11 +1319,178 @@ a {
 /* ══════════════════════════════════════════════════════════════
    BANNERS
    ══════════════════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════════
+   BLOQUES DE UNA PESTAÑA
+   La pestaña de imágenes guarda dos cosas distintas —el logo de la
+   portada y los banners—. Sin separarlas se leían como una sola
+   lista y el logo parecía un banner más.
+   ══════════════════════════════════════════════════════════════ */
+.bloque + .bloque {
+    margin-top: 34px;
+    padding-top: 30px;
+    border-top: 1px solid var(--marino-3)
+}
+
+.bloque__h {
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: 1.35rem;
+    margin-bottom: 6px
+}
+
+.bloque__p {
+    color: var(--tx-tenue);
+    font-size: .92rem;
+    max-width: 62ch;
+    margin-bottom: 16px
+}
+
+    .bloque__p b {
+        color: var(--crema);
+        font-weight: 600
+    }
+
+/* Guía plegada: quien ya sabe no la abre, quien no, la tiene ahí. */
+.guia {
+    border: 1px solid var(--marino-3);
+    border-radius: 12px;
+    margin-bottom: 18px;
+    background: var(--marino-2)
+}
+
+    .guia summary {
+        min-height: 44px;
+        display: flex;
+        align-items: center;
+        padding: 0 14px;
+        cursor: pointer;
+        font-size: .88rem;
+        font-weight: 600;
+        color: var(--ambar)
+    }
+
+.guia__t {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: .86rem
+}
+
+    .guia__t th,
+    .guia__t td {
+        text-align: left;
+        vertical-align: top;
+        padding: 8px 14px;
+        border-top: 1px solid var(--marino-3)
+    }
+
+    .guia__t th {
+        width: 150px;
+        color: var(--tx-tenue);
+        font-weight: 600;
+        white-space: nowrap
+    }
+
+    .guia__t b {
+        color: var(--crema)
+    }
+
+.guia__nota {
+    padding: 10px 14px 14px;
+    font-size: .82rem;
+    color: var(--tx-tenue)
+}
+
+/* ── Logo de la portada ─────────────────────────────────────── */
+.logo-adm {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    flex-wrap: wrap;
+    margin-bottom: 18px
+}
+
+/* Sobre crema, que es el fondo real de la portada: un logo claro se
+   vería bien sobre el panel oscuro y sería invisible en la web. */
+.logo-adm__caja {
+    width: 260px;
+    height: 150px;
+    border-radius: 12px;
+    background: #F7F1E3;
+    display: grid;
+    place-items: center;
+    padding: 12px;
+    cursor: pointer;
+    border: 1.5px dashed var(--marino-3);
+    transition: border-color .16s
+}
+
+    .logo-adm__caja:hover {
+        border-color: var(--ambar)
+    }
+
+    .logo-adm__caja img {
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain
+    }
+
+    .logo-adm__caja span {
+        font-size: .78rem;
+        color: #59637E
+    }
+
+    .logo-adm__caja input[type="file"] {
+        display: none
+    }
+
+.logo-adm__lado {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    align-items: flex-start
+}
+
+.logo-adm__est {
+    font-size: .86rem;
+    color: var(--tx-tenue)
+}
+
+    .logo-adm__est b {
+        color: var(--crema);
+        font-variant-numeric: tabular-nums
+    }
+
 .banners-adm {
     display: flex;
     flex-direction: column;
     gap: 12px;
     margin-bottom: 20px
+}
+
+/* Los dos carruseles se ven como dos bloques con nombre. El dueño no
+   tiene que acordarse de cuál es cuál: cada uno dice dónde sale. */
+.banner-grupo {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding-top: 18px
+}
+
+    .banner-grupo + .banner-grupo {
+        margin-top: 10px;
+        border-top: 1px solid var(--marino-3)
+    }
+
+.banner-grupo__h {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--tx-claro)
+}
+
+.banner-grupo__p {
+    margin-top: -8px;
+    font-size: .82rem;
+    color: var(--tx-tenue)
 }
 
 .banner-adm {
@@ -1297,4 +1591,123 @@ a {
     background: rgba(154,166,204,.1);
     border-color: rgba(154,166,204,.35);
     color: var(--tx-tenue);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   DELIVERY · costo por distrito
+
+   43 filas es una lista larga para un celular. La densidad manda:
+   fila compacta, sin tarjetas ni sombras, y el buscador arriba para
+   que el dueño llegue a "Surco" sin recorrer los 43.
+   ══════════════════════════════════════════════════════════════ */
+.zonas-tools {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 14px;
+}
+
+.zonas-masivo {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--marino-2);
+    border: 1px solid var(--marino-3);
+    border-radius: 12px;
+    padding: 8px 10px;
+}
+
+    .zonas-masivo > span {
+        font-size: .6rem;
+        font-weight: 600;
+        letter-spacing: .12em;
+        text-transform: uppercase;
+        color: var(--tx-tenue);
+    }
+
+    .zonas-masivo input {
+        width: 92px;
+        min-height: 44px;
+        border-radius: 9px;
+        border: 1px solid var(--marino-3);
+        background: var(--marino);
+        color: var(--tx-claro);
+        font: 600 1rem/1 var(--sans);
+        padding: 0 10px;
+    }
+
+.zonas-adm {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 18px;
+}
+
+.zona-adm {
+    display: grid;
+    grid-template-columns: 1fr 104px 128px;
+    gap: 12px;
+    align-items: center;
+    background: var(--marino-2);
+    border: 1px solid var(--marino-3);
+    border-radius: 12px;
+    padding: 10px 12px;
+}
+
+    /* Desmarcado = no se reparte ahí. Se atenúa en vez de desaparecer:
+       el dueño ve que existe y puede volver a activarlo.
+
+       .7 y no .45: medido, .45 dejaba el nombre del distrito en 4.03:1
+       contra el fondo, por debajo del 4.5 que pide WCAG AA. Se sigue
+       leyendo como apagado sin volverse ilegible. */
+    .zona-adm[data-off="true"] {
+        opacity: .7;
+    }
+
+.zona-adm__on {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    min-height: 44px;
+}
+
+    .zona-adm__on input {
+        width: 22px;
+        height: 22px;
+        accent-color: var(--verde);
+        flex-shrink: 0;
+        cursor: pointer;
+    }
+
+    .zona-adm__on b {
+        font-size: .92rem;
+        font-weight: 500;
+    }
+
+@media(max-width:640px) {
+    .zona-adm {
+        grid-template-columns: 1fr 92px;
+        grid-template-areas: 'nombre costo' 'tiempo tiempo';
+        row-gap: 8px;
+    }
+
+        .zona-adm .zona-adm__on {
+            grid-area: nombre
+        }
+
+        .zona-adm .campo:nth-of-type(1) {
+            grid-area: costo
+        }
+
+        .zona-adm .campo:nth-of-type(2) {
+            grid-area: tiempo;
+            width: 100%
+        }
+
+    .zonas-tools {
+        flex-direction: column;
+        align-items: stretch
+    }
 }

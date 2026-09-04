@@ -12,7 +12,7 @@
 <meta property="og:description" content="A la hora que sea. Tienda y WhatsApp abiertos 24/7.">
 <meta property="og:type" content="website">
 <meta property="og:image" content="~/assets/og.png">
-<meta name="theme-color" content="#000725">
+<meta name="theme-color" content="#000625">
 
 <link rel="icon" href="~/assets/favicon.svg" type="image/svg+xml" asp-append-version="true">
 <link rel="manifest" href="~/manifest.webmanifest">
@@ -32,19 +32,46 @@
 
 <div class="promobar"><div class="promobar__t" id="promobar"></div></div>
 
-<!-- ══════════ NAV ══════════ -->
+<!-- ══════════ NAV ══════════
+     El buscador ocupa el lugar donde estaba el sello "Abierto ahora".
+     El 24/7 no se pierde: lo siguen diciendo la franja roja de arriba y
+     el hero con la hora del propio cliente.
+
+     En móvil el menú se pliega en una hamburguesa. Es una decisión del
+     cliente, no una recomendación: esconder la navegación cuesta clics
+     (Nielsen #6, reconocer en vez de recordar). Lo que sí se cuida es
+     que el que quede plegado funcione bien — foco, Escape, 44 px — y
+     que el buscador del catálogo siga a la vista sin abrir nada. -->
 <nav class="nav">
   <div class="nav__in">
     <a href="#" class="logo" aria-label="Boleto Licorería — inicio">
-      <span class="logo__mark">B</span>
+      @* El isotipo del kit reemplaza al sello con la "B". A 40 px sus
+         letras interiores no se leen, por eso sigue al lado la marca
+         escrita: el sello identifica, el texto nombra. *@
+      <img src="~/assets/marca/isotipo-claro.svg" alt="" class="logo__img"
+           width="1000" height="1000" asp-append-version="true">
       <span class="logo__txt">Boleto<small>Licorería</small></span>
     </a>
-    <div class="nav__links">
-      <a href="#catalogo">Catálogo</a>
-      <a href="#promo">Promoción</a>
+
+    <button class="burger" id="burger" type="button"
+            aria-expanded="false" aria-controls="navMenu" aria-label="Abrir menú">
+      <span class="burger__caja" aria-hidden="true"><i></i><i></i><i></i></span>
+    </button>
+
+    <div class="nav__menu" id="navMenu">
+      <div class="nav__links">
+        <a href="#catalogo">Catálogo</a>
+        @* Solo en escritorio: en móvil el cliente pidió únicamente
+           el logo y el catálogo. La promoción sigue a un scroll y la
+           franja roja la anuncia en todas las pantallas. *@
+        <a href="#promo" class="nav__link--esc">Promoción</a>
+      </div>
+      <label class="search search--nav">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+        <input type="search" id="qNav" placeholder="Buscar producto…"
+               aria-label="Buscar producto en el catálogo" autocomplete="off">
+      </label>
     </div>
-    <!-- Nielsen #1 · el estado del sistema ES la propuesta de valor -->
-    <span class="status" id="status"><i></i><em>Abierto ahora</em><b id="reloj"></b></span>
   </div>
 </nav>
 
@@ -52,11 +79,42 @@
 <header class="hero">
   <div class="wrap">
     <div class="cartel">
-      @* SLOT: logotipo sin el "24". Si el archivo no existe, cae al texto. *@
-      <img src="~/assets/logotipo.svg" alt="@Model.Catalogo.Config.Tienda"
-           class="cartel__logo" asp-append-version="true"
-           onerror="this.replaceWith(Object.assign(document.createElement('p'),{className:'eyebrow',textContent:'@Model.Catalogo.Config.Tienda'}))">
-      <h1 class="display">A la hora<br>que sea</h1>
+      @* El logo del negocio ocupa el lugar del titular. Es decisión del
+         cliente: un logotipo no dice a qué vino uno a esta página como lo
+         decía "A la hora que sea".
+
+         Lo que se hace para que cueste lo menos posible: sigue siendo el
+         <h1> de la página —el documento no se queda sin encabezado— y el
+         texto alternativo carga la propuesta de valor, que es lo que leen
+         Google y un lector de pantalla. El párrafo de abajo la repite en
+         pantalla para quien sí ve la imagen.
+
+         Si el archivo no carga, cae al titular de texto: un h1 vacío
+         dejaría la página sin encabezado. *@
+      @{
+          // Si el dueño subió un logo desde el panel, manda ese. El
+          // oficial del kit es la vuelta atrás y el respaldo.
+          var cfg = Model.Catalogo.Config;
+          var propio = !string.IsNullOrWhiteSpace(cfg.LogoHero);
+          var logoSrc = propio ? cfg.LogoHero : Url.Content("~/assets/marca/logo-oscuro.svg");
+          var logoW = propio ? cfg.LogoHeroAncho : 928;
+          var logoH = propio ? cfg.LogoHeroAlto : 643;
+      }
+      <h1 class="cartel__marca">
+        @* Versión azul del logo: la chapa es crema, y la variante marfil
+           quedaría invisible. El kit trae las dos y esta es la que
+           corresponde a fondo claro.
+
+           El ancho y el alto se declaran siempre que se conozcan: esta
+           imagen es la más grande de la primera pantalla y sin ellos el
+           hero salta al terminar de cargar. Del logo subido se miden al
+           subirlo; si el formato no se pudo leer van en 0 y se omiten. *@
+        <img src="@logoSrc" fetchpriority="high"
+             width="@(logoW > 0 ? logoW.ToString() : null)"
+             height="@(logoH > 0 ? logoH.ToString() : null)"
+             alt="@cfg.Tienda · licorería abierta las 24 horas, todos los días"
+             onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'display cartel__marca-txt',textContent:'A la hora que sea'}))">
+      </h1>
       <svg class="flourish" viewBox="0 0 340 16" aria-hidden="true">
         <path d="M14 8h140" stroke="currentColor" stroke-width="1.6"/>
         <path d="M186 8h140" stroke="currentColor" stroke-width="1.6"/>
@@ -76,35 +134,66 @@
   </div>
 </header>
 
-<!-- ══════════ BANNERS ══════════
-     Se rinde solo si hay banners cargados. Sin imágenes, no aparece. -->
-<section class="banners" id="bannersSec" hidden>
-  <div class="wrap">
-    <div class="carrusel" id="carrusel" role="region" aria-roledescription="carrusel" aria-label="Promociones">
-      <div class="carrusel__pista" id="pista"></div>
-    </div>
-    <div class="carrusel__puntos" id="puntos" role="tablist" aria-label="Ir a promoción"></div>
-  </div>
-</section>
+<!-- ══════════ PROMOCIONES ══════════
+     Los dos carruseles SON la sección de promoción. Antes había además
+     una tarjeta hecha a mano que anunciaba la Coca Cola gratis: decía
+     lo mismo que dicen los banners del propio cliente, con sus fotos y
+     sus precios. Dos anuncios de la misma promoción se restan.
 
-<!-- ══════════ PROMO ══════════ -->
-<section class="sec" id="promo">
+     El id="promo" se queda acá: es el destino del enlace "Promoción"
+     del menú, y ahora apunta a donde están las promociones de verdad.
+
+     Cada carrusel se rinde solo si tiene banners cargados. Sin
+     imágenes no aparece ninguno de los dos —ni el título—, y si solo
+     hay banners arriba, abajo no queda un hueco. -->
+<section class="sec sec--promo" id="promo" hidden>
   <div class="wrap">
-    <div class="promo">
-      <div>
-        <p class="eyebrow eyebrow--red">Hasta agotar stock</p>
-        <h2 class="display promo__h">Coca&nbsp;Cola 1.5&nbsp;L<br><em>gratis</em></h2>
-        <svg class="flourish flourish--sm" viewBox="0 0 340 16" aria-hidden="true">
-          <path d="M14 8h140" stroke="currentColor" stroke-width="1.6"/>
-          <path d="M186 8h140" stroke="currentColor" stroke-width="1.6"/>
-          <path d="M170 1.5l6.5 6.5-6.5 6.5-6.5-6.5z" fill="currentColor"/>
-          <circle cx="8" cy="8" r="4" fill="currentColor"/><circle cx="332" cy="8" r="4" fill="currentColor"/>
-        </svg>
-        <p class="promo__p">Por la compra de cualquier <b>whisky</b> o <b>ron</b>.</p>
-        <button class="btn btn--line btn--dark" id="promoBtn">Ver los que aplican</button>
-      </div>
-      <div aria-hidden="true"><span class="seal"><em>Gratis</em><b>1.5 L</b></span></div>
+    <div class="sec__head sec__head--c">
+      @* El icono "acompañante" del kit: una botella con un más. Es
+         literalmente de lo que tratan estas promociones. *@
+      <i class="ico ico--acompanante ico--xl sec__ico" aria-hidden="true"></i>
+      <p class="eyebrow eyebrow--red eyebrow--c">Hasta agotar stock</p>
+      <h2 class="display sec__h">Promociones de hoy</h2>
+      <svg class="flourish flourish--c" viewBox="0 0 340 16" aria-hidden="true">
+        <path d="M14 8h140" stroke="currentColor" stroke-width="1.6"/>
+        <path d="M186 8h140" stroke="currentColor" stroke-width="1.6"/>
+        <path d="M170 1.5l6.5 6.5-6.5 6.5-6.5-6.5z" fill="currentColor"/>
+        <circle cx="8" cy="8" r="4" fill="currentColor"/><circle cx="332" cy="8" r="4" fill="currentColor"/>
+      </svg>
     </div>
+
+    <div class="banners" id="bannersSec1" hidden>
+      <div class="carrusel" id="carrusel1" role="region" aria-roledescription="carrusel" aria-label="Promociones">
+        <div class="carrusel__pista" id="pista1"></div>
+        <button class="flecha flecha--ant" id="ant1" type="button" aria-label="Promoción anterior" hidden>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
+        </button>
+        <button class="flecha flecha--sig" id="sig1" type="button" aria-label="Promoción siguiente" hidden>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>
+        </button>
+      </div>
+      <div class="carrusel__puntos" id="puntos1" role="tablist" aria-label="Ir a promoción"></div>
+    </div>
+
+    <div class="banners banners--abajo" id="bannersSec2" hidden>
+      <div class="carrusel" id="carrusel2" role="region" aria-roledescription="carrusel" aria-label="Más promociones">
+        <div class="carrusel__pista" id="pista2"></div>
+        <button class="flecha flecha--ant" id="ant2" type="button" aria-label="Promoción anterior" hidden>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
+        </button>
+        <button class="flecha flecha--sig" id="sig2" type="button" aria-label="Promoción siguiente" hidden>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>
+        </button>
+      </div>
+      <div class="carrusel__puntos" id="puntos2" role="tablist" aria-label="Ir a promoción"></div>
+    </div>
+
+    @* Lo único de la tarjeta anterior que hacía algo: filtra el catálogo
+       a los productos que llevan la Coca Cola gratis. Un banner anuncia;
+       esto lleva a comprarlo. *@
+    <p class="promo__pie">
+      <button class="btn btn--line" id="promoBtn">Ver los productos que aplican</button>
+    </p>
   </div>
 </section>
 
@@ -169,6 +258,7 @@
 <!-- ══════════ CIERRE ══════════ -->
 <section class="close">
   <div class="wrap">
+    <i class="ico ico--hielo ico--xl close__ico" aria-hidden="true"></i>
     <h2 class="display close__h">¿Se acabó el hielo<br>a las 3 de la mañana?</h2>
     <p class="close__p">Escríbenos igual. No cerramos nunca.</p>
     <a class="btn btn--wa btn--xl" id="closeWa" href="#" target="_blank" rel="noopener">
@@ -182,7 +272,8 @@
   <div class="wrap">
     <div class="foot__in">
       <div class="logo">
-        <span class="logo__mark">B</span>
+        <img src="~/assets/marca/isotipo-claro.svg" alt="" class="logo__img"
+             width="1000" height="1000" asp-append-version="true">
         <span class="logo__txt">Boleto<small>Licorería</small></span>
       </div>
       <div class="foot__soc">
@@ -211,17 +302,22 @@
     <div class="preview__in">
       <p class="preview__lbl">Esto es lo que se va a enviar</p>
       <div class="bubble" id="bubble"></div>
-      @if (Model.Catalogo.Config.Zonas.Length > 0)
-      {
-        <label class="distrito">
-          <span class="distrito__lbl">Tu distrito</span>
-          <select id="distritoSel" aria-label="Elige tu distrito"></select>
-        </label>
-      }
     </div>
   </div>
+  @* El distrito va FUERA de la vista previa, que está colapsada por
+     defecto y solo se abre sola una vez. Adentro, el cliente podía
+     mandar el pedido sin elegirlo y enterarse del delivery cuando la
+     tienda le respondía. Acá se ve siempre que hay algo en el pedido. *@
+  @if (Model.Catalogo.Config.Zonas.Length > 0)
+  {
+    <label class="distrito" id="distritoCaja" data-pendiente="true">
+      <span class="distrito__lbl" id="distritoLbl">Tu distrito</span>
+      <select id="distritoSel" aria-label="Elige tu distrito para calcular el delivery"></select>
+    </label>
+  }
   <div class="orderbar__in">
     <button class="peek" id="peek" aria-expanded="false" aria-controls="bubble">
+      <i class="ico ico--carrito" aria-hidden="true"></i>
       <span class="peek__sum"><b id="barTotal">S/ 0.00</b><span id="barCount">0 productos</span></span>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg>
     </button>
@@ -258,7 +354,11 @@
 {
 <div class="edad" id="edad" data-on="false" role="dialog" aria-modal="true" aria-labelledby="edadT">
   <div class="edad__box" id="edadAsk">
-    <img src="~/assets/logo.svg" alt="@Model.Catalogo.Config.Tienda" class="edad__logo" asp-append-version="true">
+    @* La caja es crema: va el logo azul, igual que el del hero. Antes
+       iba el archivo con fondo propio y se dibujaba un rectángulo
+       oscuro dentro de la tarjeta. *@
+    <img src="~/assets/marca/logo-oscuro.svg" alt="@Model.Catalogo.Config.Tienda"
+         class="edad__logo" width="928" height="643" asp-append-version="true">
     <h2 class="display" id="edadT">¿Eres mayor de 18 años?</h2>
     <p>La venta de bebidas alcohólicas a menores de edad está prohibida en el Perú (Ley N° 28681).</p>
     <div class="edad__btns">

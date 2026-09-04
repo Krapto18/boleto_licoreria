@@ -13,7 +13,7 @@ PLAN="plan-boleto"
 APP="boleto-licoreria"        # debe ser único en azurewebsites.net
 SQLSRV="sql-boleto-$RANDOM"
 SQLDB="boleto"
-SQLUSER="boletoadmin"
+SQLUSER="boleto_admin"
 STORAGE="stboleto$RANDOM"     # solo minúsculas y números, único global
 
 read -rsp "Contraseña para el admin de SQL: " SQLPASS; echo

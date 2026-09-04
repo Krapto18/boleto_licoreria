@@ -97,10 +97,24 @@ namespace Boleto.Data.Migrations
                         .HasMaxLength(60)
                         .HasColumnType("nvarchar(60)");
 
+                    b.Property<bool>("ComboAcompananteActivo")
+                        .HasColumnType("bit");
+
+                    b.Property<decimal>("ComboAcompanantePrecio")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("decimal(10,2)");
+
                     b.Property<string>("ComboHielo")
                         .IsRequired()
                         .HasMaxLength(60)
                         .HasColumnType("nvarchar(60)");
+
+                    b.Property<bool>("ComboHieloActivo")
+                        .HasColumnType("bit");
+
+                    b.Property<decimal>("ComboHieloPrecio")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("decimal(10,2)");
 
                     b.Property<string>("Grupo")
                         .IsRequired()
@@ -158,8 +172,8 @@ namespace Boleto.Data.Migrations
 
                     b.Property<string>("Banners")
                         .IsRequired()
-                        .HasMaxLength(2000)
-                        .HasColumnType("nvarchar(2000)");
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
 
                     b.Property<string>("Direccion")
                         .IsRequired()
@@ -185,6 +199,11 @@ namespace Boleto.Data.Migrations
                         .IsRequired()
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("LogoHero")
+                        .IsRequired()
+                        .HasMaxLength(220)
+                        .HasColumnType("nvarchar(220)");
 
                     b.Property<string>("Longitud")
                         .IsRequired()
@@ -236,8 +255,8 @@ namespace Boleto.Data.Migrations
 
                     b.Property<string>("Zonas")
                         .IsRequired()
-                        .HasMaxLength(2000)
-                        .HasColumnType("nvarchar(2000)");
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
 
                     b.HasKey("Id");
 

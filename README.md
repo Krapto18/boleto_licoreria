@@ -14,7 +14,8 @@ con mala señal a las 3 a.m.
 Razor Pages sirve el mismo HTML/CSS/JS de siempre. Solo cambian dos cosas:
 
 - `data.js` desapareció: el servidor inyecta `CONFIG`, `GRUPOS` y `PRODUCTOS`
-  desde la base con las mismas claves. **`app.js` no cambió ni una línea.**
+  desde la base con las mismas claves, así que `app.js` siguió funcionando sin
+  tocarlo.
 - El botón "Descargar archivo" del panel ahora hace `POST` y publica de verdad.
 
 ## Estructura
@@ -30,8 +31,25 @@ Boleto.sln
     ├── Services/             CatalogoService con caché en memoria, IAlmacen
     └── wwwroot/              css, js (app.js, panel.js), assets, sw.js, manifest
 infra/crear-azure.sh          provisiona todo con az CLI
+tests/                        flujo de pedido en un navegador real
 .github/workflows/            despliegue automático
 ```
+
+## Probar el flujo de pedido
+
+```bash
+cd tests
+npm install
+npm test        # con la app corriendo
+```
+
+Corre el pedido completo en un navegador real —escritorio y móvil con
+touch— hasta el mensaje de WhatsApp. Si encuentra las credenciales del
+panel (user-secrets, o `BOLETO_USER` / `BOLETO_PASS`) entra también a
+comprobar que se puede cerrar sesión desde el teléfono; si no las
+encuentra, se salta esa parte en vez de fallar. Existe porque dos defectos reales
+pasaron una verificación hecha solo con peticiones al servidor: ninguno
+de los dos era visible sin un navegador. Detalle en `tests/README.md`.
 
 ## Correr en local
 
@@ -151,6 +169,159 @@ Always On cada pocos minutos; `/health/db` sí comprueba la conexión a SQL y se
 consulta a mano. Con el chequeo de base en `/health`, el ping de mantenerse
 despierto gastaba DTU las 24 horas para nada.
 
+## Delivery por distrito
+
+El seed carga los **43 distritos de la provincia de Lima a S/ 10**. No incluye el
+Callao: es Provincia Constitucional, no Lima Metropolitana. Si el dueño reparte
+allá, los agrega desde el panel.
+
+Solo se siembran si la tabla está vacía. Si el dueño ya editó costos, el arranque
+no se los pisa.
+
+El cliente elige su distrito en la vista previa del pedido, antes de enviarlo. El
+costo se suma al total y viaja desglosado en el mensaje de WhatsApp —subtotal,
+delivery y total— para que no se entere del cargo recién cuando la tienda le
+responde.
+
+En el panel, la pestaña **Delivery** edita costo y tiempo por distrito, con
+"aplicar a todos" sobre el filtro activo (cuando sube la gasolina son 43 campos a
+mano) y un botón para reponer los distritos que se hayan quitado. Desmarcar un
+distrito lo saca de la lista que ve el cliente sin perder su costo.
+
+El costo se persiste como texto dentro de `Tienda.Zonas` con formato
+`Distrito|Costo|Tiempo`, y se escribe y se lee **con cultura invariante**. Sin
+fijarla, el separador decimal depende de la cultura del hilo: un `10,5` guardado
+en `es-PE` se releería como `105` en un servidor invariante, y ese número
+aparecería en el total del cliente.
+
+## Navegación, banners y hero
+
+Cuatro cambios pedidos por el dueño. Están hechos y documentados con lo que
+cuesta cada uno en `docs/decisiones-ihc.md`, nivel 6.
+
+**Dos carruseles de cinco banners** son la sección de promoción: reemplazaron a
+una tarjeta hecha a mano que anunciaba lo mismo que los banners del cliente.
+Vienen con cuatro piezas suyas —artes de Instagram recortadas a 4:3— sembradas
+solo si la tabla está vacía, igual que las zonas. El dueño las reemplaza desde el
+panel.
+
+Los banners van acotados a 560 px de ancho: a todo el ancho, una pieza 4:3 medía
+885 px de alto y había que pasar dos afiches a scroll antes de ver un producto.
+Llevan flechas además del deslizamiento, que se apagan en los extremos en vez de
+quitarse — un objetivo que se mueve es un objetivo que se falla. Cuesta scroll: los diez
+llenos meten 380 px entre el hero y el catálogo en un móvil de 390. Se amortigua
+con carga diferida de los nueve banners que no son el primero y con el enlace
+"Catálogo" del menú, que salta por encima de los dos. El panel los muestra como
+"carrusel de arriba" y "carrusel de abajo", cinco ranuras cada uno.
+
+Se persisten en `Tienda.Banners` con formato `ruta|alt|enlace|carrusel`. El
+cuarto campo es nuevo: las líneas guardadas antes caen en el carrusel 1, que es
+donde estaban. La columna pasó de 2000 a 4000 caracteres — diez líneas con 120
+de texto alternativo y 200 de enlace no entraban.
+
+**Buscador en el nav, en lugar del sello "Abierto ahora".** El 24/7 lo siguen
+diciendo la franja roja y el hero con la hora del propio cliente, que es lo que
+de verdad lo hace verificable. Hay dos campos de búsqueda —el del nav y el del
+catálogo— porque en móvil el nav se pliega: son el mismo estado y se copian el
+texto entre sí.
+
+**Menú hamburguesa en móvil**, con el logo, el buscador y el catálogo. Escribir en
+el buscador del menú lo cierra y pasa el texto y el cursor al buscador del
+catálogo: el menú ocupa la pantalla y dejarlo abierto sería escribir contra una
+cortina. Esto contradice a
+Nielsen #6 y es una decisión del cliente, no una recomendación. Se hizo con
+`aria-expanded`, salida con Escape y devolución del foco, cierre al elegir y 44
+px de objetivo. El buscador del catálogo y el botón de WhatsApp **no** están
+detrás del menú: comprar y escribir no dependen de que el cliente descubra la
+hamburguesa.
+
+**El logo del negocio en lugar del titular del hero.** Un logotipo dice quién
+eres, no a qué viniste. Para que la página no se quede muda, el logo va **dentro
+del `<h1>`** y su texto alternativo lleva la propuesta de valor, que es lo que
+leen Google y un lector de pantalla; el párrafo de abajo la repite en pantalla.
+Si el archivo no carga, un `onerror` devuelve el titular de texto: un `<h1>` con
+una imagen rota es un `<h1>` vacío.
+
+## Kit de marca
+
+Todo lo de marca sale del kit oficial del cliente. Ya no queda ningún
+placeholder: el `logo.svg` de 194 KB —un PNG en base64 dentro de un SVG— y el
+sello improvisado con una "B" se fueron.
+
+Lo que se usa vive en `wwwroot/assets/`, renombrado por para qué sirve y no por
+cómo venía. El inventario completo, con qué es cada archivo y de dónde sale,
+está en `wwwroot/assets/LEEME.txt`.
+
+| Dónde | Pieza |
+|---|---|
+| Hero y verificación de edad | `marca/logo-oscuro.svg` — la versión azul, porque el fondo es crema |
+| Nav, pie, panel y login | `marca/isotipo-claro.svg` — el sello circular |
+| Favicon e íconos PWA | el sello sobre cuadrado azul, rasterizado desde `marca/isotipo-pleno.svg` |
+| Al compartir por WhatsApp | `og.png`, el logo marfil sobre azul |
+| Resumen del pedido | `iconos/carrito.svg` |
+| Sección de cierre | `iconos/hielo.svg` |
+| Promoción | `iconos/acompanante.svg` — una botella con un más, que es de lo que trata |
+
+**Los iconos se pintan como máscara CSS**, no como `<img>`. Así heredan el color
+del texto que acompañan y el mismo archivo sirve sobre la chapa crema y sobre el
+fondo noche. Si el navegador no soporta máscaras, el icono no se dibuja — no
+aparece un cuadrado de color donde debería haber una silueta.
+
+**Al logo se le ciñó el `viewBox`.** El arte ocupa 909×624 dentro de un lienzo de
+1046×1030: el 40 % del alto era vacío, y en el hero eso salía como un bache entre
+el logo y la filigrana.
+
+**La paleta pasó a la oficial**, leída de los propios SVG del kit: azul
+`#000625` y rojo `#CF2026`. Antes eran `#000725` y `#C8102E`, aproximaciones de
+cuando no había manual. El rojo de marca sobre crema da 4.80:1, por encima del
+4.5 que pide AA. **El crema del hero se mantiene** en `#F7F1E3`: el marfil de la
+marca (`#FEFCEC`) es casi blanco y aclararía toda la chapa, que no es lo que se
+pidió — está a un cambio de variable si el cliente lo prefiere.
+
+**El service worker subió a `boleto-v2`.** Sin subir la versión, quien ya visitó
+el sitio seguiría viendo el logo anterior desde su caché.
+
+## El combo y de qué está hecho
+
+Un combo es la botella más un **aditivo** —gaseosa, ginger, cualquier
+acompañante— y/o **hielo**. La pestaña de precios define los dos: qué es, cuánto
+costaría suelto y una casilla de si va incluido.
+
+- **Apagar no borra.** Se acaba la gaseosa, se desmarca; cuando llega, se vuelve
+  a marcar. El nombre y el precio se conservan.
+- **El precio de cada parte no se publica.** Sirve para la cuenta que el panel
+  muestra al lado: `botella + aditivo + hielo = S/ X · el combo cobra S/ Y menos`.
+  Es lo que el dueño necesita saber al fijar un combo.
+- **Lo apagado no viaja al navegador.** El catálogo manda el nombre vacío en vez
+  de mandarlo y esconderlo con JavaScript.
+- **Marcado sin nombre no se publica.** Un combo que anuncia algo sin decir qué
+  termina en el mensaje de WhatsApp del cliente. Lo revisan el panel y el
+  servidor.
+
+La migración `ComboAditivoHielo` **enciende las casillas donde ya había un
+nombre**. Con el `defaultValue: false` que EF genera solo, los 18 combos que ya
+existen habrían dejado de decir qué incluyen sin que nadie se enterara — el mismo
+error que casi se cuela con `ProductoActivo`.
+
+## El logo de la portada
+
+Se cambia desde el panel, pestaña **Imágenes**. Vacío en la base = se usa el
+oficial del kit, y "Volver al logo oficial" siempre lo restaura: el archivo del
+kit vive en `assets/` y el subido va al almacén, así que no hay forma de quedarse
+sin portada.
+
+**Las medidas se leen del archivo al subirlo** (`AlmacenBase.MedirAsync`): PNG en
+el IHDR, WebP en sus tres codificaciones, JPEG recorriendo segmentos hasta el
+SOF, sin librería de imágenes y sobre los mismos bytes que ya se leían para
+validar la firma. Se guardan como `ruta|ancho|alto` en `Tienda.LogoHero` y se
+declaran en el HTML: ese logo es el elemento que mide el LCP y sin su tamaño el
+hero salta al terminar de cargar. Si el formato no se pudo leer, el panel lo dice
+en vez de callarlo.
+
+La vista previa del panel se dibuja **sobre crema**, que es el fondo real de la
+portada: sobre el fondo oscuro del panel, un logo claro se vería perfecto y sería
+invisible en la web.
+
 ## Seguridad del panel
 
 - Login con ASP.NET Core Identity, bloqueo tras 5 intentos.
@@ -177,4 +348,8 @@ Capa extra opcional: Access Restrictions por IP sobre `/panel`.
    en `wwwroot/assets/productos` son de desarrollo; en Azure van al Blob.
 4. GA4 y Meta Pixel: se guardan en la tabla `Tienda` y se cargan solo si tienen
    valor.
-5. Migrar `Tienda` a una pantalla del panel (hoy se edita por SQL).
+5. Confirmar con el dueño el costo real por distrito. Los S/ 10 uniformes son el
+   punto de partida, no un precio acordado zona por zona.
+6. Llevar el resto de `Tienda` al panel — teléfono, redes, promos, métodos de
+   pago. Las zonas de reparto ya tienen su pantalla; lo demás sigue editándose
+   por SQL.

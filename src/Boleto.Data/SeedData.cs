@@ -20,14 +20,31 @@ public static class SeedData
     {
         await db.Database.MigrateAsync(ct);
 
-        if (!await db.Tienda.AnyAsync(ct))
+        var tienda = await db.Tienda.FirstOrDefaultAsync(ct);
+        if (tienda is null)
         {
-            /* Zonas, pagos y tiempo de entrega nacen vacíos a propósito:
-               mientras el cliente no los confirme, esas secciones no
-               aparecen en la web. Se llenan desde el panel. */
-            db.Tienda.Add(new Tienda { Id = 1 });
-            await db.SaveChangesAsync(ct);
+            /* Pagos y tiempo de entrega nacen vacíos a propósito: mientras
+               el cliente no los confirme, esas secciones no aparecen en la
+               web. Se llenan desde el panel. */
+            tienda = new Tienda { Id = 1 };
+            db.Tienda.Add(tienda);
         }
+
+        /* Las zonas sí se siembran: el reparto a Lima Metropolitana está
+           confirmado. Solo si están vacías — si el dueño ya editó costos
+           desde el panel, no se le pisan. Los S/ 10 son el punto de
+           partida acordado; el panel es el que manda de ahí en adelante. */
+        if (string.IsNullOrWhiteSpace(tienda.Zonas))
+            tienda.Zonas = string.Join('\n', DistritosLima.Select(d => $"{d}|10|"));
+
+        /* Banners de arranque: son piezas del propio cliente, recortadas
+           de sus artes de Instagram. No son de relleno, pero sí tienen
+           precios de un momento dado — el dueño los reemplaza desde el
+           panel. Igual que las zonas, solo se siembran si está vacío. */
+        if (string.IsNullOrWhiteSpace(tienda.Banners))
+            tienda.Banners = string.Join('\n', BannersIniciales);
+
+        await db.SaveChangesAsync(ct);
 
         var existentes = await db.Productos.Select(p => p.Id).ToListAsync(ct);
         var faltantes = Catalogo.Where(p => !existentes.Contains(p.Id)).ToList();
@@ -50,6 +67,38 @@ public static class SeedData
                     string.Join("; ", r.Errors.Select(e => e.Description)));
         }
     }
+
+    /// <summary>
+    /// Formato: ruta|texto alternativo|enlace|carrusel.
+    /// Dos arriba y dos abajo: con uno solo el carrusel no muestra puntos
+    /// ni se puede deslizar, y no se vería que la pista funciona.
+    /// </summary>
+    private static readonly string[] BannersIniciales =
+    [
+        "/assets/banners/jack-daniels.webp|Jack Daniels 700 ml a S/ 111.90, o S/ 124.90 con hielo de 3 kg. Coca Cola 1.5 L gratis|#catalogo|1",
+        "/assets/banners/barcelo.webp|Barceló Ron Gran Añejo 1.7 L a S/ 118.90, o S/ 126.90 con hielo de 3 kg. Coca Cola 1.5 L gratis|#catalogo|1",
+        "/assets/banners/old-parr.webp|Old Parr 12 años 750 ml con hielo de 3 kg y Coca Cola 1.5 L a S/ 99.90|#catalogo|2",
+        "/assets/banners/don-julio.webp|Don Julio Tequila Blanco 750 ml a S/ 118.90|#catalogo|2"
+    ];
+
+    /// <summary>
+    /// Los 43 distritos de la provincia de Lima. No incluye el Callao:
+    /// es Provincia Constitucional, no Lima Metropolitana. Si el dueño
+    /// reparte allá, se agregan sus distritos desde el panel.
+    /// </summary>
+    public static readonly string[] DistritosLima =
+    [
+        "Ancón", "Ate", "Barranco", "Breña", "Carabayllo", "Chaclacayo",
+        "Chorrillos", "Cieneguilla", "Comas", "El Agustino", "Independencia",
+        "Jesús María", "La Molina", "La Victoria", "Lima (Cercado)", "Lince",
+        "Los Olivos", "Lurigancho (Chosica)", "Lurín", "Magdalena del Mar",
+        "Miraflores", "Pachacámac", "Pucusana", "Pueblo Libre", "Puente Piedra",
+        "Punta Hermosa", "Punta Negra", "Rímac", "San Bartolo", "San Borja",
+        "San Isidro", "San Juan de Lurigancho", "San Juan de Miraflores",
+        "San Luis", "San Martín de Porres", "San Miguel", "Santa Anita",
+        "Santa María del Mar", "Santa Rosa", "Santiago de Surco", "Surquillo",
+        "Villa El Salvador", "Villa María del Triunfo"
+    ];
 
     /// <summary>Catálogo del cliente. 55 productos, precios del PDF original.</summary>
     private static readonly Producto[] Catalogo =

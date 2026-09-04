@@ -4,8 +4,8 @@
   "description": "Licorería abierta las 24 horas. Arma tu pedido y mándalo por WhatsApp.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#000725",
-  "theme_color": "#000725",
+  "background_color": "#000625",
+  "theme_color": "#000625",
   "lang": "es-PE",
   "icons": [
     {

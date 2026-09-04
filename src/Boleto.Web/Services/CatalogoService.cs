@@ -1,3 +1,4 @@
+using System.Globalization;
 using Boleto.Data;
 using Boleto.Data.Entities;
 using Boleto.Web.Models;
@@ -49,14 +50,20 @@ public class CatalogoService(
                 G = p.Grupo,
                 P = p.Precio,
                 Combo = p.PrecioCombo,
-                Acompanante = p.ComboAcompanante,
-                Hielo = p.ComboHielo,
+                /* Lo apagado no viaja al navegador. Mandarlo y ocultarlo
+                   con JavaScript dejaría el dato en el HTML de una página
+                   pública, y además la web tendría que decidir algo que
+                   ya está decidido en el panel. */
+                Acompanante = p.ComboAcompananteActivo ? p.ComboAcompanante : "",
+                Hielo = p.ComboHieloActivo ? p.ComboHielo : "",
                 Promo = p.Promo,
                 Stock = p.Stock,
                 Col = p.Color,
                 Img = p.Imagen
             })
             .ToArrayAsync(ct);
+
+        var logo = ParsearLogo(tienda.LogoHero);
 
         var dto = new CatalogoDto(
             new ConfigDto
@@ -78,6 +85,9 @@ public class CatalogoService(
                     StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),
                 TiempoEntrega = tienda.TiempoEntrega,
                 Banners = ParsearBanners(tienda.Banners),
+                LogoHero = logo.Ruta,
+                LogoHeroAncho = logo.Ancho,
+                LogoHeroAlto = logo.Alto,
                 Verificar18 = tienda.Verificar18,
                 Ga4 = tienda.Ga4,
                 MetaPixel = tienda.MetaPixel
@@ -95,7 +105,14 @@ public class CatalogoService(
         return dto;
     }
 
-    /// <summary>Formato por línea: Distrito|Costo|Tiempo</summary>
+    /// <summary>
+    /// Formato por línea: Distrito|Costo|Tiempo
+    ///
+    /// El costo se lee con cultura invariante, igual que se escribe. Sin
+    /// fijarla, el separador decimal depende de la cultura del hilo: un
+    /// "10,5" guardado en es-PE se releería como 105 en un servidor
+    /// invariante, y el cliente vería ese número en su total.
+    /// </summary>
     private static ZonaDto[] ParsearZonas(string texto) =>
         texto.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
              .Select(l => l.Split('|'))
@@ -103,12 +120,17 @@ public class CatalogoService(
              .Select(p => new ZonaDto
              {
                  Nombre = p[0].Trim(),
-                 Costo = p.Length > 1 && decimal.TryParse(p[1].Trim(), out var c) ? c : 0,
+                 Costo = p.Length > 1 && decimal.TryParse(
+                     p[1].Trim(), NumberStyles.Number, CultureInfo.InvariantCulture, out var c) ? c : 0,
                  Tiempo = p.Length > 2 ? p[2].Trim() : ""
              })
              .ToArray();
 
-    /// <summary>Formato por línea: ruta|alt|enlace</summary>
+    /// <summary>
+    /// Formato por línea: ruta|alt|enlace|carrusel. El cuarto campo es el
+    /// carrusel (1 arriba, 2 abajo); las líneas guardadas antes de que
+    /// hubiera dos pistas no lo traen y caen en el 1, que es donde estaban.
+    /// </summary>
     private static BannerDto[] ParsearBanners(string texto) =>
         texto.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
              .Select(l => l.Split('|'))
@@ -117,9 +139,42 @@ public class CatalogoService(
              {
                  Img = p[0].Trim(),
                  Alt = p.Length > 1 ? p[1].Trim() : "",
-                 Url = p.Length > 2 ? p[2].Trim() : ""
+                 Url = p.Length > 2 ? p[2].Trim() : "",
+                 Grupo = p.Length > 3 && p[3].Trim() == "2" ? 2 : 1
              })
              .ToArray();
+
+    /// <summary>Formato: ruta|ancho|alto. Vacío = el logo oficial.</summary>
+    private static (string Ruta, int Ancho, int Alto) ParsearLogo(string texto)
+    {
+        var p = texto.Split('|');
+        if (string.IsNullOrWhiteSpace(p[0])) return ("", 0, 0);
+        return (p[0].Trim(),
+                p.Length > 1 && int.TryParse(p[1], out var a) ? a : 0,
+                p.Length > 2 && int.TryParse(p[2], out var h) ? h : 0);
+    }
+
+    /// <summary>
+    /// Cambia el logo de la portada. Ruta vacía = vuelve al oficial.
+    /// </summary>
+    public async Task GuardarLogoHeroAsync(
+        string? ruta, int ancho, int alto, CancellationToken ct = default)
+    {
+        var limpia = (ruta ?? "").Replace('|', ' ').Replace('\n', ' ').Trim();
+        if (limpia.Length > 190)
+            throw new InvalidOperationException("La ruta de la imagen es demasiado larga.");
+
+        await using var db = await factory.CreateDbContextAsync(ct);
+        var t = await db.Tienda.FirstOrDefaultAsync(ct)
+                ?? throw new InvalidOperationException("No hay configuración de tienda.");
+
+        t.LogoHero = limpia.Length == 0 ? "" : $"{limpia}|{Math.Max(0, ancho)}|{Math.Max(0, alto)}";
+
+        await db.SaveChangesAsync(ct);
+        Invalidar();
+        log.LogInformation("Logo de portada actualizado: {Ruta}",
+            limpia.Length == 0 ? "(el oficial)" : limpia);
+    }
 
     public void Invalidar() => cache.Remove(Key);
 
@@ -183,6 +238,22 @@ public class CatalogoService(
         p.Grupo = d.Grupo;
         p.Precio = d.Precio;
         p.PrecioCombo = d.PrecioCombo;
+        /* Guardar desde el editor AFIRMA la composición del combo: lo
+           que quedó escrito, va incluido.
+
+           Sin esto, escribir un acompañante acá lo dejaba guardado y
+           apagado —la casilla vive en la pestaña de precios y nace en
+           false—: la auditoría lo registraba, el panel lo mostraba y la
+           web no lo enseñaba. Pasó de verdad, con un "Sprite 1.5 L" que
+           estuvo invisible hasta que apareció en el registro de cambios.
+
+           El apagado temporal —se acabó la gaseosa— se hace en la
+           pestaña de precios, que es donde se mira el día a día. Si
+           después se vuelve al editor y se guarda, se vuelve a afirmar
+           lo que dice el campo, que es lo que el editor significa. */
+        p.ComboAcompananteActivo = !string.IsNullOrWhiteSpace(d.ComboAcompanante);
+        p.ComboHieloActivo = !string.IsNullOrWhiteSpace(d.ComboHielo);
+
         p.ComboAcompanante = d.ComboAcompanante;
         p.ComboHielo = d.ComboHielo;
         p.Promo = d.Promo;
@@ -286,21 +357,97 @@ public class CatalogoService(
         return anterior;   // para borrar el blob viejo
     }
 
-    /// <summary>Reemplaza la lista de banners. Máximo 5.</summary>
-    public async Task GuardarBannersAsync(IEnumerable<BannerDto> banners, CancellationToken ct = default)
+    /// <summary>
+    /// Reemplaza las zonas de reparto. Se revalida acá porque el costo del
+    /// delivery entra en el total que ve el cliente: un valor basura se
+    /// convierte en un precio equivocado en el mensaje de WhatsApp.
+    /// </summary>
+    public async Task GuardarZonasAsync(IEnumerable<ZonaDto> zonas, CancellationToken ct = default)
     {
-        /* Sin Take(5): truncaba en silencio y dejaba el tope de abajo como
-           código muerto. Si llegan más de cinco, algo pasó — se avisa. */
-        var lista = banners.Where(b => !string.IsNullOrWhiteSpace(b.Img)).ToList();
-        if (lista.Count > 5)
-            throw new InvalidOperationException("El carrusel admite un máximo de 5 banners.");
+        var lista = zonas.Where(z => !string.IsNullOrWhiteSpace(z.Nombre)).ToList();
+
+        foreach (var z in lista)
+        {
+            if (z.Costo < 0)
+                throw new InvalidOperationException(
+                    $"El costo de {z.Nombre} no puede ser negativo. Usa 0 para reparto gratis.");
+
+            if (z.Costo > 500)
+                throw new InvalidOperationException(
+                    $"El costo de {z.Nombre} se ve equivocado: S/ {z.Costo:0.00}.");
+        }
+
+        var duplicado = lista.GroupBy(z => z.Nombre.Trim(), StringComparer.OrdinalIgnoreCase)
+                             .FirstOrDefault(g => g.Count() > 1);
+        if (duplicado is not null)
+            throw new InvalidOperationException($"El distrito \"{duplicado.Key}\" está repetido.");
+
+        /* El separador es '|' y el salto de línea define la fila: si el
+           dueño los escribe dentro de un tiempo, romperían el formato al
+           releerlo. Se neutralizan en vez de rechazar el guardado. */
+        static string Limpio(string? s) =>
+            (s ?? "").Replace('|', ' ').Replace('\n', ' ').Replace('\r', ' ').Trim();
+
+        // Invariante al escribir, invariante al leer. Ver ParsearZonas.
+        var texto = string.Join('\n', lista.Select(z =>
+            string.Create(CultureInfo.InvariantCulture,
+                $"{Limpio(z.Nombre)}|{z.Costo:0.##}|{Limpio(z.Tiempo)}")));
+
+        if (texto.Length > 4000)
+            throw new InvalidOperationException(
+                "La lista de zonas es demasiado larga. Acorta los tiempos de entrega " +
+                "o quita distritos a los que no repartas.");
 
         await using var db = await factory.CreateDbContextAsync(ct);
         var t = await db.Tienda.FirstOrDefaultAsync(ct)
                 ?? throw new InvalidOperationException("No hay configuración de tienda.");
 
-        t.Banners = string.Join('\n', lista.Select(b =>
-            $"{b.Img}|{b.Alt?.Replace('|', ' ')}|{b.Url?.Replace('|', ' ')}"));
+        t.Zonas = texto;
+        await db.SaveChangesAsync(ct);
+        Invalidar();
+        log.LogInformation("Zonas de reparto actualizadas: {N} distritos", lista.Count);
+    }
+
+    /// <summary>Cuántos carruseles tiene la página y cuántos banners cabe en cada uno.</summary>
+    public const int Carruseles = 2;
+    public const int BannersPorCarrusel = 5;
+
+    /// <summary>
+    /// Reemplaza la lista de banners. Dos carruseles de cinco: el de
+    /// arriba (1) y el de abajo (2).
+    /// </summary>
+    public async Task GuardarBannersAsync(IEnumerable<BannerDto> banners, CancellationToken ct = default)
+    {
+        /* Sin Take(5): truncaba en silencio y dejaba el tope de abajo como
+           código muerto. Si llegan más de la cuenta, algo pasó — se avisa. */
+        var lista = banners
+            .Where(b => !string.IsNullOrWhiteSpace(b.Img))
+            .Select(b => b with { Grupo = b.Grupo == 2 ? 2 : 1 })
+            .ToList();
+
+        foreach (var g in lista.GroupBy(b => b.Grupo))
+            if (g.Count() > BannersPorCarrusel)
+                throw new InvalidOperationException(
+                    $"El carrusel {g.Key} admite un máximo de {BannersPorCarrusel} banners.");
+
+        // Los saltos de línea y las barras son los separadores del formato:
+        // si entran en un texto, parten la línea en campos que no existen.
+        static string Limpio(string? s) =>
+            (s ?? "").Replace('|', ' ').Replace('\n', ' ').Replace('\r', ' ').Trim();
+
+        var texto = string.Join('\n', lista.Select(b =>
+            $"{Limpio(b.Img)}|{Limpio(b.Alt)}|{Limpio(b.Url)}|{b.Grupo}"));
+
+        if (texto.Length > 4000)
+            throw new InvalidOperationException(
+                "Los textos de los banners no entran en el espacio disponible. " +
+                "Acorta las descripciones o los enlaces.");
+
+        await using var db = await factory.CreateDbContextAsync(ct);
+        var t = await db.Tienda.FirstOrDefaultAsync(ct)
+                ?? throw new InvalidOperationException("No hay configuración de tienda.");
+
+        t.Banners = texto;
 
         await db.SaveChangesAsync(ct);
         Invalidar();
@@ -371,6 +518,59 @@ public class CatalogoService(
                 p.Stock = c.Stock;
                 cambio = true;
             }
+
+            /* ── Composición del combo ────────────────────────────
+               Se aplica campo por campo y solo si vino: null es "no lo
+               toques". El nombre se limpia de saltos de línea porque
+               termina dentro del mensaje de WhatsApp. */
+            static string Limpio(string s) =>
+                s.Replace('\n', ' ').Replace('\r', ' ').Trim();
+
+            void Componer(
+                string etiqueta, string? nombre, decimal? precio, bool? enCombo,
+                Func<string> leerNombre, Action<string> ponerNombre,
+                Func<decimal> leerPrecio, Action<decimal> ponerPrecio,
+                Func<bool> leerOn, Action<bool> ponerOn)
+            {
+                if (precio is < 0)
+                    throw new InvalidOperationException(
+                        $"El precio del {etiqueta} de {p.Nombre} no puede ser negativo.");
+
+                var nom = nombre is null ? leerNombre() : Limpio(nombre);
+                if (nom.Length > 60) nom = nom[..60];
+
+                // Un combo no puede anunciar que incluye algo sin nombre.
+                if (enCombo == true && nom.Length == 0)
+                    throw new InvalidOperationException(
+                        $"Marcaste que el combo de {p.Nombre} lleva {etiqueta}, " +
+                        "pero no dice cuál. Escribe el nombre o desmarca la casilla.");
+
+                if (nombre is not null && leerNombre() != nom)
+                {
+                    Auditar($"Combo{etiqueta}", leerNombre(), nom);
+                    ponerNombre(nom); cambio = true;
+                }
+                if (precio is { } pr && leerPrecio() != pr)
+                {
+                    Auditar($"Combo{etiqueta}Precio", leerPrecio().ToString("0.00"), pr.ToString("0.00"));
+                    ponerPrecio(pr); cambio = true;
+                }
+                if (enCombo is { } on && leerOn() != on)
+                {
+                    Auditar($"Combo{etiqueta}Activo", leerOn() ? "sí" : "no", on ? "sí" : "no");
+                    ponerOn(on); cambio = true;
+                }
+            }
+
+            Componer("Aditivo", c.Aditivo, c.AditivoPrecio, c.AditivoEnCombo,
+                     () => p.ComboAcompanante, v => p.ComboAcompanante = v,
+                     () => p.ComboAcompanantePrecio, v => p.ComboAcompanantePrecio = v,
+                     () => p.ComboAcompananteActivo, v => p.ComboAcompananteActivo = v);
+
+            Componer("Hielo", c.Hielo, c.HieloPrecio, c.HieloEnCombo,
+                     () => p.ComboHielo, v => p.ComboHielo = v,
+                     () => p.ComboHieloPrecio, v => p.ComboHieloPrecio = v,
+                     () => p.ComboHieloActivo, v => p.ComboHieloActivo = v);
 
             if (cambio)
             {

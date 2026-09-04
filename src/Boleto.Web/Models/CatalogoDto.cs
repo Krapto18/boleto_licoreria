@@ -40,6 +40,15 @@ public record ConfigDto
     [JsonPropertyName("pagos")]      public string[] Pagos { get; init; } = [];
     [JsonPropertyName("tiempoEntrega")] public string TiempoEntrega { get; init; } = "";
     [JsonPropertyName("banners")]    public BannerDto[] Banners { get; init; } = [];
+
+    /// <summary>
+    /// Logo de la portada. Vacío = el oficial que viene con la app.
+    /// El ancho y el alto van aparte porque se declaran en el HTML: sin
+    /// ellos, el hero salta cuando la imagen termina de cargar.
+    /// </summary>
+    [JsonPropertyName("logoHero")]  public string LogoHero { get; init; } = "";
+    [JsonPropertyName("logoHeroW")] public int LogoHeroAncho { get; init; }
+    [JsonPropertyName("logoHeroH")] public int LogoHeroAlto { get; init; }
     [JsonPropertyName("verificar18")]   public bool Verificar18 { get; init; }
     [JsonPropertyName("ga4")]        public string Ga4 { get; init; } = "";
     [JsonPropertyName("metaPixel")]  public string MetaPixel { get; init; } = "";
@@ -57,9 +66,22 @@ public record BannerDto
     [JsonPropertyName("img")] public string Img { get; init; } = "";
     [JsonPropertyName("alt")] public string Alt { get; init; } = "";
     [JsonPropertyName("url")] public string Url { get; init; } = "";
+
+    /// <summary>Carrusel al que pertenece: 1 arriba, 2 abajo.</summary>
+    [JsonPropertyName("g")]   public int Grupo { get; init; } = 1;
 }
 
 public record CatalogoDto(ConfigDto Config, string[] Grupos, ProductoDto[] Productos);
 
-/// <summary>Lo que el panel manda al publicar.</summary>
-public record CambioDto(string Id, decimal Precio, decimal? PrecioCombo, bool Stock);
+/// <summary>
+/// Lo que el panel manda al publicar.
+///
+/// Los campos del combo son opcionales y <c>null</c> significa "no lo
+/// toques": así un cliente viejo —una pestaña abierta desde antes del
+/// cambio— publica un precio sin borrar de paso la composición del
+/// combo, que él no sabe que existe.
+/// </summary>
+public record CambioDto(
+    string Id, decimal Precio, decimal? PrecioCombo, bool Stock,
+    string? Aditivo = null, decimal? AditivoPrecio = null, bool? AditivoEnCombo = null,
+    string? Hielo = null, decimal? HieloPrecio = null, bool? HieloEnCombo = null);

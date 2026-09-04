@@ -1,0 +1,77 @@
+name: Desplegar a Azure App Service
+
+# Autenticación con OIDC, no con perfil de publicación: la Web App tiene
+# la autenticación básica deshabilitada y ese método ya no funciona.
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+env:
+  APP_NAME: boleto-licoreria
+  DOTNET_VERSION: '10.0.x'
+
+permissions:
+  id-token: write      # necesario para pedir el token OIDC a GitHub
+  contents: read
+
+# Un despliegue a la vez. Con una sola instancia y caché en memoria, dos
+# publicaciones solapadas dejan el sitio reiniciándose sobre sí mismo.
+concurrency:
+  group: deploy-produccion
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restaurar
+        run: dotnet restore
+
+      - name: Compilar
+        run: dotnet build --no-restore -c Release
+
+      - name: Publicar
+        run: >
+          dotnet publish src/Boleto.Web/Boleto.Web.csproj
+          -c Release --no-build -o ${{ github.workspace }}/publish
+
+      - name: Subir artefacto
+        uses: actions/upload-artifact@v4
+        with:
+          name: sitio
+          path: ${{ github.workspace }}/publish
+          if-no-files-found: error
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    environment:
+      name: produccion
+      url: ${{ steps.desplegar.outputs.webapp-url }}
+    steps:
+      - name: Descargar artefacto
+        uses: actions/download-artifact@v4
+        with:
+          name: sitio
+          path: publish
+
+      - name: Iniciar sesión en Azure
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Desplegar
+        id: desplegar
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ env.APP_NAME }}
+          package: publish

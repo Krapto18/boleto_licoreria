@@ -110,6 +110,30 @@ var app = builder.Build();
 
 app.UseForwardedHeaders();
 
+/* Redirección de www a la dirección canónica.
+
+   Se redirige www y nada más. El hostname de azurewebsites.net se deja
+   servir tal cual a propósito: Always On y el health check de App Service
+   pegan ahí, y un 301 haría que App Service vea el sitio como caído. Para
+   que los buscadores no lo indexen en paralelo está el canonical del
+   <head>, que es la herramienta correcta para eso. */
+if (Uri.TryCreate(builder.Configuration["Sitio:Url"], UriKind.Absolute, out var canonica))
+{
+    var www = "www." + canonica.Host;
+    app.Use(async (ctx, siguiente) =>
+    {
+        if (ctx.Request.Host.Host.Equals(www, StringComparison.OrdinalIgnoreCase))
+        {
+            ctx.Response.Redirect(
+                $"{canonica.Scheme}://{canonica.Host}" +
+                $"{ctx.Request.PathBase}{ctx.Request.Path}{ctx.Request.QueryString}",
+                permanent: true);
+            return;
+        }
+        await siguiente();
+    });
+}
+
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error");

@@ -8,10 +8,16 @@
 <title>@Model.Catalogo.Config.Tienda · Abierto las 24 horas, todos los días</title>
 <meta name="description" content="Licorería abierta 24 horas. Tienda y WhatsApp siempre atendiendo. Arma tu pedido y mándalo por WhatsApp. Coca Cola 1.5 L gratis con cualquier whisky o ron.">
 
+<link rel="canonical" href="@Model.UrlCanonica">
+
 <meta property="og:title" content="Boleto Licorería · Abierto las 24 horas">
 <meta property="og:description" content="A la hora que sea. Tienda y WhatsApp abiertos 24/7.">
 <meta property="og:type" content="website">
-<meta property="og:image" content="~/assets/og.png">
+<meta property="og:url" content="@Model.UrlCanonica">
+@* Absolutas a propósito. Antes acá había "~/assets/og.png": el ~ de Razor
+   solo se traduce en los atributos que maneja el tag helper de URLs, no en
+   content, así que salía literal al HTML y ninguna vista previa cargaba. *@
+<meta property="og:image" content="@Model.UrlImagen">
 <meta name="theme-color" content="#000625">
 
 <link rel="icon" href="~/assets/favicon.svg" type="image/svg+xml" asp-append-version="true">

@@ -6,11 +6,23 @@ namespace Boleto.Data;
 
 /// <summary>
 /// Aplica migraciones y carga el catálogo inicial.
-/// Es idempotente: solo inserta lo que falta, nunca pisa precios editados
-/// desde el panel. Se puede correr en cada arranque sin miedo.
+///
+/// Son dos pasos separados a propósito: la migración es condición para
+/// arrancar y el sembrado no. Quien llama decide qué tolerar.
+///
+/// El sembrado es idempotente: solo inserta lo que falta, nunca pisa
+/// precios editados desde el panel. Se puede correr en cada arranque
+/// sin miedo.
 /// </summary>
 public static class SeedData
 {
+    /// <summary>
+    /// Aplica las migraciones pendientes. Sin esquema no hay sitio, así
+    /// que quien llama no debería tolerar que esto falle.
+    /// </summary>
+    public static Task MigrarAsync(BoletoDbContext db, CancellationToken ct = default) =>
+        db.Database.MigrateAsync(ct);
+
     public static async Task InicializarAsync(
         BoletoDbContext db,
         UserManager<IdentityUser> users,
@@ -18,8 +30,6 @@ public static class SeedData
         string adminPassword,
         CancellationToken ct = default)
     {
-        await db.Database.MigrateAsync(ct);
-
         var tienda = await db.Tienda.FirstOrDefaultAsync(ct);
         if (tienda is null)
         {

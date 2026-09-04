@@ -92,8 +92,11 @@ builder.Services.AddRazorPages(o =>
     o.Conventions.AllowAnonymousToPage("/Cuenta/Login");
 });
 
+/* Unhealthy, no Degraded: el middleware mapea Degraded a HTTP 200, así que
+   con la base caída este endpoint respondía 200 — un monitor incapaz de
+   reportar la única falla que existe para detectar. */
 builder.Services.AddHealthChecks()
-    .AddDbContextCheck<BoletoDbContext>("sql", HealthStatus.Degraded, tags: ["db"]);
+    .AddDbContextCheck<BoletoDbContext>("sql", HealthStatus.Unhealthy, tags: ["db"]);
 
 // App Service termina el TLS antes de llegar a Kestrel.
 builder.Services.Configure<ForwardedHeadersOptions>(o =>
@@ -174,10 +177,19 @@ using (var scope = app.Services.CreateScope())
 {
     var sp = scope.ServiceProvider;
     var log = sp.GetRequiredService<ILoggerFactory>().CreateLogger("Seed");
+    var factory = sp.GetRequiredService<IDbContextFactory<BoletoDbContext>>();
+    await using var db = await factory.CreateDbContextAsync();
+
+    /* La migración no se tolera. Antes iba dentro del try junto con el
+       sembrado, apoyada en que la web podía seguir sirviendo desde caché;
+       pero en un arranque en frío la caché está vacía, así que sin esquema
+       cada visita termina en la página de error. Y con Always On el sitio
+       se queda así indefinidamente: en pie, roto, y sin que nada avise.
+       Fallar acá es lo que vuelve visible el problema. */
+    await SeedData.MigrarAsync(db);
+
     try
     {
-        var factory = sp.GetRequiredService<IDbContextFactory<BoletoDbContext>>();
-        await using var db = await factory.CreateDbContextAsync();
         await SeedData.InicializarAsync(
             db,
             sp.GetRequiredService<UserManager<IdentityUser>>(),
@@ -186,9 +198,9 @@ using (var scope = app.Services.CreateScope())
     }
     catch (Exception ex)
     {
-        // Que falle el seed no debe tumbar el sitio: la web pública puede
-        // seguir sirviendo desde caché.
-        log.LogError(ex, "Falló la inicialización de la base");
+        /* El sembrado sí se tolera: con el esquema creado el sitio
+           funciona, y lo que falte se completa desde el panel. */
+        log.LogError(ex, "Falló el sembrado inicial");
     }
 }
 

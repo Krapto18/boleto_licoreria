@@ -100,6 +100,12 @@ public class IndexModel(CatalogoService svc, IAlmacen almacen, ILogger<IndexMode
         }
     }
 
+    /// <summary>
+    /// La URL sin el ?v=. Es lo que identifica al blob: el sufijo de versión
+    /// vive en la URL, no en el nombre del archivo.
+    /// </summary>
+    private static string SinVersion(string url) => url.Split('?')[0];
+
     /// <summary>Sube o reemplaza la foto de un producto.</summary>
     public async Task<IActionResult> OnPostImagenAsync(
         string id, IFormFile archivo, CancellationToken ct)
@@ -115,8 +121,16 @@ public class IndexModel(CatalogoService svc, IAlmacen almacen, ILogger<IndexMode
             var anterior = await svc.GuardarImagenAsync(id, url, ct);
 
             /* El blob viejo se borra después de guardar el nuevo: si algo
-               falla en el medio, el producto nunca queda sin imagen. */
-            if (!string.IsNullOrWhiteSpace(anterior) && anterior != url)
+               falla en el medio, el producto nunca queda sin imagen.
+
+               La comparación va sin el ?v=. Ese sufijo existe solo para
+               romper la caché del navegador y no forma parte del nombre del
+               blob, así que dos URLs que lo llevan distinto pueden nombrar
+               el mismo archivo. Comparando las URLs enteras, reemplazar una
+               foto por otra del mismo formato siempre daba "son distintas"
+               —cambia la marca de tiempo— y el borrado eliminaba el archivo
+               recién subido, porque era el mismo que el anterior. */
+            if (!string.IsNullOrWhiteSpace(anterior) && SinVersion(anterior) != SinVersion(url))
                 await almacen.EliminarAsync(anterior, ct);
 
             return new JsonResult(new { ok = true, url });

@@ -519,6 +519,29 @@ a {
     background: rgba(207,32,38,.12)
 }
 
+/* El descuento que decide el vendedor: cuánto baja el combo si el cliente
+   saca esta parte. Cero —lo normal— significa que el combo es un precio de
+   paquete y no cambia: no lo recibe, paga lo mismo. */
+.adit__d {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 44px;
+    font-size: .78rem;
+    color: var(--tx-tenue);
+    cursor: pointer
+}
+
+    .adit__d span {
+        flex: 1
+    }
+
+    .adit__d input[type="number"] {
+        width: 104px;
+        flex-shrink: 0
+    }
+
 @media(max-width:620px) {
     /* En el teléfono el nombre necesita el ancho entero: "Coca Cola
        1.5 L" no entra al lado de la casilla y del precio. */

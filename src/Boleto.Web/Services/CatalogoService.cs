@@ -60,6 +60,8 @@ public class CatalogoService(
                    ya está decidido en el panel. */
                 Aco = p.ComboAcompananteActivo ? p.ComboAcompanante : "",
                 Hie = p.ComboHieloActivo ? p.ComboHielo : "",
+                AcoD = p.ComboAcompananteActivo ? p.ComboAcompananteDescuento : 0m,
+                HieD = p.ComboHieloActivo ? p.ComboHieloDescuento : 0m,
                 p.Promo,
                 p.Stock,
                 p.Color,
@@ -78,6 +80,8 @@ public class CatalogoService(
             Combo = f.PrecioCombo,
             Acompanantes = Producto.Opciones(f.Aco),
             Hielo = f.Hie,
+            AcompananteDescuento = f.AcoD,
+            HieloDescuento = f.HieD,
             Promo = f.Promo,
             Stock = f.Stock,
             Col = f.Color,
@@ -613,6 +617,42 @@ public class CatalogoService(
                      () => p.ComboHielo, v => p.ComboHielo = v,
                      () => p.ComboHieloPrecio, v => p.ComboHieloPrecio = v,
                      () => p.ComboHieloActivo, v => p.ComboHieloActivo = v);
+
+            /* Lo que se le descuenta al combo si el cliente decide no
+               llevar esa parte. Va aparte de Componer porque no depende
+               del nombre ni del interruptor: es una decisión de precio. */
+            void Descuento(string etiqueta, decimal? valor,
+                           Func<decimal> leer, Action<decimal> poner)
+            {
+                if (valor is null) return;
+                if (valor < 0)
+                    throw new InvalidOperationException(
+                        $"El descuento del {etiqueta} de {p.Nombre} no puede ser negativo.");
+                if (leer() == valor) return;
+                Auditar($"Combo{etiqueta}Descuento",
+                        leer().ToString("0.00"), valor.Value.ToString("0.00"));
+                poner(valor.Value);
+                cambio = true;
+            }
+
+            Descuento("Aditivo", c.AditivoDescuento,
+                      () => p.ComboAcompananteDescuento, v => p.ComboAcompananteDescuento = v);
+            Descuento("Hielo", c.HieloDescuento,
+                      () => p.ComboHieloDescuento, v => p.ComboHieloDescuento = v);
+
+            /* El combo no puede quedar por debajo de la botella ni en el
+               peor caso. Sin este tope, pedir el combo y sacarle todo
+               saldría más barato que pedir la botella sola, y el cliente
+               que hace la cuenta lo encuentra en un minuto. */
+            if (p.PrecioCombo is { } pc)
+            {
+                var piso = pc - (p.ComboAcompananteDescuento + p.ComboHieloDescuento);
+                if (piso < p.Precio)
+                    throw new InvalidOperationException(
+                        $"Con esos descuentos el combo de {p.Nombre} podría bajar a " +
+                        $"{piso:0.00} y la botella sola cuesta {p.Precio:0.00}. " +
+                        "Baja los descuentos o sube el precio del combo.");
+            }
 
             if (cambio)
             {

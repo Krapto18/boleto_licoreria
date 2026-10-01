@@ -25,8 +25,20 @@ public class Producto
                   dueño para saber qué está regalando al fijar el combo.
          Activo   si va incluido. Apagarlo saca el ítem del combo sin
                   perder ni el nombre ni el precio, para poder volver a
-                  encenderlo cuando haya stock del aditivo. */
-    [MaxLength(60)] public string ComboAcompanante { get; set; } = "";
+                  encenderlo cuando haya stock del aditivo.
+
+       El aditivo admite VARIAS opciones separadas por «|»:
+
+           Coca Cola 1.5 L|Everest 1.5 L|Ginger Ale 1 L
+
+       y el cliente elige una en la web. Quien quiere gaseosa negra y
+       quien quiere Everest piden el mismo combo sin tener que escribirlo
+       aparte en el WhatsApp. Una sola opción —que es el caso de siempre—
+       se comporta igual que antes: no hay nada que elegir y se muestra
+       como texto.
+
+       El hielo no se elige: es uno solo. */
+    [MaxLength(300)] public string ComboAcompanante { get; set; } = "";
     public decimal ComboAcompanantePrecio { get; set; }
     public bool ComboAcompananteActivo { get; set; }
 
@@ -51,4 +63,24 @@ public class Producto
 
     public int Orden { get; set; }
     public DateTime ActualizadoUtc { get; set; } = DateTime.UtcNow;
+
+    /* ── Opciones del aditivo ────────────────────────────────────
+       Viven acá y no en el servicio porque las escriben tres caminos
+       distintos —el editor de producto, la publicación masiva y el alta—
+       y los tres tienen que guardar exactamente la misma forma. */
+
+    /// <summary>
+    /// Las opciones de aditivo ya limpias: sin vacías, sin repetidas y
+    /// sin espacios de sobra. Una sola es el caso normal; varias
+    /// significan que el cliente elige.
+    /// </summary>
+    public static string[] Opciones(string? texto) =>
+        (texto ?? "")
+            .Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+    /// <summary>Forma canónica para guardar en la columna.</summary>
+    public static string NormalizarOpciones(string? texto) =>
+        string.Join('|', Opciones(texto));
 }

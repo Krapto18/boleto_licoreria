@@ -32,6 +32,7 @@
 
   const carrito = new Map();
   const modos   = new Map();
+  const elige   = new Map();   // id -> aditivo elegido para el combo
   let grupo = 'Todo', busca = '', ultima = null, toastT = null, yaAbrio = false;
   let confirmado = false;   // declaración de mayoría de edad
   let envio = null;         // zona elegida: { n, c, t }
@@ -47,6 +48,19 @@
   const keyOf    = (id, m) => `${id}|${m}`;
   const modoDe   = (p) => modos.get(p.id) || 'botella';
   const precioDe = (p, m) => (m === 'combo' && p.combo ? p.combo : p.p);
+
+  /* Qué aditivo lleva el combo de este producto.
+
+     Si el dueño cargó varias opciones manda la que eligió el cliente. Si
+     eligió una que después se quitó del panel, cae en la primera: más
+     vale mandar al WhatsApp algo que la tienda tiene que un nombre que ya
+     no existe. */
+  const acoDe = (p) => {
+    const op = p.aco || [];
+    if (!op.length) return '';
+    const e = elige.get(p.id);
+    return op.includes(e) ? e : op[0];
+  };
 
   /* ══════════════════════════════════════════════════════════
      Reloj — hace verificable el 24/7. El usuario ve su propia
@@ -270,14 +284,44 @@
             <button data-set="botella" data-id="${p.id}" aria-pressed="${modo === 'botella'}">Botella</button>
             <button data-set="combo"   data-id="${p.id}" aria-pressed="${modo === 'combo'}">Combo</button>
           </div>
-          <p class="seg__note">${modo === 'combo'
-            ? '+ ' + [p.aco, p.hie].filter(Boolean).map(esc).join(' · ')
-            : '&nbsp;'}</p>` : ''}
+          ${modo === 'combo' ? extrasCombo(p) : '<p class="seg__note">&nbsp;</p>'}` : ''}
           <div class="card__f">${hay ? control(p, modo)
             : `<button class="avisar" data-avisar="${p.id}">Avísame cuando llegue</button>`}</div>
         </div>
       </article>`;
     }).join('');
+  }
+
+  /* Qué lleva el combo.
+
+     Con un solo aditivo es una línea de texto, como siempre. Con varios,
+     el cliente elige: uno quiere Coca Cola y otro quiere Everest, y hasta
+     ahora el que quería Everest tenía que escribirlo aparte en el
+     WhatsApp — o no pedirlo.
+
+     Es un <select> nativo y no una lista propia a propósito: en el
+     teléfono abre la rueda del sistema, que es un objetivo grande y
+     familiar sin diseñar nada, y en el escritorio se recorre con el
+     teclado sin programarlo. Una lista a medida habría que hacerla
+     accesible desde cero. */
+  function extrasCombo(p) {
+    const op = p.aco || [];
+
+    if (op.length < 2) {
+      const todo = [...op, p.hie].filter(Boolean).map(esc).join(' · ');
+      return `<p class="seg__note">${todo ? '+ ' + todo : '&nbsp;'}</p>`;
+    }
+
+    const sel = acoDe(p);
+    return `
+      <label class="elige">
+        <span class="elige__t">Elige tu acompañante</span>
+        <select class="elige__sel" data-elige="${p.id}"
+                aria-label="Acompañante del combo de ${esc(p.n)}">
+          ${op.map((o) => `<option value="${esc(o)}"${o === sel ? ' selected' : ''}>${esc(o)}</option>`).join('')}
+        </select>
+      </label>
+      <p class="seg__note">${p.hie ? '+ ' + esc(p.hie) : '&nbsp;'}</p>`;
   }
 
   function control(p, modo) {
@@ -307,13 +351,35 @@
     const sub = e.target.closest('[data-sub]'); if (sub) return mover(sub.dataset.sub, -1);
   });
 
+  /* La elección vive en su propio mapa, igual que el modo botella/combo.
+     Así sobrevive a que el producto entre y salga del pedido.
+
+     No se repinta la grilla: el <select> ya muestra el valor nuevo por su
+     cuenta, y volver a dibujar la tarjeta lo destruiría justo cuando el
+     cliente acaba de tocarlo — en el teléfono eso cierra la rueda a media
+     elección. */
+  $('#grid').addEventListener('change', (e) => {
+    const s = e.target.closest('[data-elige]');
+    if (!s) return;
+    const id = s.dataset.elige;
+    elige.set(id, s.value);
+
+    /* Si el producto ya está en el pedido hay que corregir el renglón: si
+       no, el mensaje de WhatsApp sale con el acompañante anterior y el
+       cliente recibe lo que no pidió. */
+    const k = keyOf(id, 'combo');
+    if (carrito.has(k)) carrito.set(k, { ...carrito.get(k), elegido: s.value });
+
+    guardar(); actualizar();
+  });
+
   function mover(id, d, silencio) {
     const p = PRODUCTOS.find((x) => x.id === id);
     if (!p || p.stock === false) return;
     const modo = modoDe(p), k = keyOf(id, modo);
     const q = (carrito.get(k)?.q || 0) + d;
     if (q <= 0) carrito.delete(k);
-    else carrito.set(k, { ...p, modo, precio: precioDe(p, modo), q });
+    else carrito.set(k, { ...p, modo, precio: precioDe(p, modo), q, elegido: acoDe(p) });
 
     pintar(); actualizar(); guardar();
 
@@ -329,18 +395,21 @@
   function guardar() {
     try {
       localStorage.setItem(LS_PEDIDO, JSON.stringify(
-        [...carrito.values()].map((i) => ({ id: i.id, modo: i.modo, q: i.q }))));
+        [...carrito.values()].map((i) => ({ id: i.id, modo: i.modo, q: i.q, eleg: i.elegido || '' }))));
     } catch (_) { /* modo privado */ }
   }
   function recuperar() {
     try {
       const raw = localStorage.getItem(LS_PEDIDO);
       if (!raw) return;
-      JSON.parse(raw).forEach(({ id, modo, q }) => {
+      JSON.parse(raw).forEach(({ id, modo, q, eleg }) => {
         const p = PRODUCTOS.find((x) => x.id === id);
         if (!p || p.stock === false) return;   // se cayó del catálogo o se agotó
         modos.set(id, modo);
-        carrito.set(keyOf(id, modo), { ...p, modo, precio: precioDe(p, modo), q });
+        /* La opción guardada puede haber desaparecido del panel desde la
+           última visita: solo se restaura si sigue existiendo. */
+        if (eleg && (p.aco || []).includes(eleg)) elige.set(id, eleg);
+        carrito.set(keyOf(id, modo), { ...p, modo, precio: precioDe(p, modo), q, elegido: acoDe(p) });
       });
       if (carrito.size) toast('Recuperamos tu pedido anterior');
     } catch (_) { /* ignorar */ }
@@ -378,7 +447,7 @@
     const lineas = items.map((i) => {
       let l = `• ${i.q}× ${i.n} ${i.v} — ${money(i.precio * i.q)}`;
       if (i.modo === 'combo') {
-        if (i.aco) l += `\n    ↳ ${i.aco}`;
+        if (i.elegido) l += `\n    ↳ ${i.elegido}`;
         if (i.hie) l += `\n    ↳ ${i.hie}`;
       }
       return l;
@@ -650,6 +719,18 @@
      leían con un querySelectorAll global — con dos pistas, mover una
      habría marcado los puntos de la otra.
      ══════════════════════════════════════════════════════════ */
+  /* Tocar un afiche limpia el filtro antes de llevar al catálogo.
+
+     Sin esto, quien venía de una búsqueda sin resultados aterrizaba en una
+     grilla vacía y el afiche parecía roto: el cliente toca una promoción y
+     ve "No encontramos eso". El ancla del enlace hace el desplazamiento;
+     acá solo se deja la grilla con algo que mostrar. */
+  document.getElementById('promo')?.addEventListener('click', (e) => {
+    if (!e.target.closest('[data-banner]')) return;
+    grupo = 'Todo'; chips();
+    buscar('');
+  });
+
   function carrusel(g) {
     const banners = (CONFIG.banners || []).filter((b) => (b.g || 1) === g);
     if (!banners.length) return;
@@ -661,9 +742,15 @@
        sobre nada. */
     $('#promo').hidden = false;
     $('#bannersSec' + g).hidden = false;
-    $('#pista' + g).innerHTML = banners.map((b, i) => b.url
-      ? `<a class="banner" href="${esc(b.url)}"><img src="${esc(b.img)}" alt="${esc(b.alt || '')}" loading="${primera(i)}"></a>`
-      : `<div class="banner"><img src="${esc(b.img)}" alt="${esc(b.alt || '')}" loading="${primera(i)}"></div>`
+    /* Todos los afiches llevan al catálogo, sin excepción.
+
+       Antes cada banner guardaba su propio destino y varios apuntaban a
+       anclas que no existen —"#Whisky", cuando el grupo se llama
+       "Whiskys"—: el cliente tocaba el afiche y no pasaba nada. El afiche
+       anuncia; el catálogo vende. Un destino único además quita del panel
+       una decisión que no aportaba nada. */
+    $('#pista' + g).innerHTML = banners.map((b, i) =>
+      `<a class="banner" href="#catalogo" data-banner><img src="${esc(b.img)}" alt="${esc(b.alt || '')}" loading="${primera(i)}"></a>`
     ).join('');
 
     if (banners.length < 2) return;
@@ -762,6 +849,12 @@
     $('#barWa').addEventListener('click', () => evento('pedido_armado'));
     $('#year').textContent = new Date().getFullYear();
   }
+
+  /* "Ver los productos que aplican" sin un solo producto marcado es un
+     callejón: lleva al catálogo y lo deja en cero, que es exactamente la
+     queja que trajo este cambio. Si no hay nada que mostrar, el botón no
+     se queda deshabilitado ni avisando: no existe. */
+  if (!PRODUCTOS.some((p) => p.promo)) $('#promoBtn')?.remove();
 
   /* ── Arranque ────────────────────────────────────────────── */
   medicion();

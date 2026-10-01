@@ -462,6 +462,17 @@ a {
         opacity: .5
     }
 
+/* Lo que el cliente va a ver con lo que hay escrito. Ocupa la fila entera
+   debajo de los tres controles: es una confirmación, no un campo más, y
+   así en el teléfono no compite por el ancho. */
+.adit__ops {
+    grid-column: 1 / -1;
+    font-size: .74rem;
+    line-height: 1.35;
+    color: var(--tx-tenue);
+    margin-top: -2px
+}
+
 .adit__sw {
     display: flex;
     align-items: center;

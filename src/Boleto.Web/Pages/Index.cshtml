@@ -169,8 +169,17 @@
     </div>
 
     <div class="banners" id="bannersSec1" hidden>
-      <div class="carrusel" id="carrusel1" role="region" aria-roledescription="carrusel" aria-label="Promociones">
-        <div class="carrusel__pista" id="pista1"></div>
+      <!-- Las flechas viven FUERA de .carrusel, no dentro.
+
+           Un elemento posicionado en absoluto dentro de un contenedor con
+           scroll se desplaza junto al contenido: al pasar al segundo
+           afiche las dos flechas se iban de pantalla y no había cómo
+           volver salvo arrastrando. El marco es el que no se mueve, así
+           que es el que las sostiene. -->
+      <div class="carrusel__marco">
+        <div class="carrusel" id="carrusel1" role="region" aria-roledescription="carrusel" aria-label="Promociones">
+          <div class="carrusel__pista" id="pista1"></div>
+        </div>
         <button class="flecha flecha--ant" id="ant1" type="button" aria-label="Promoción anterior" hidden>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
         </button>
@@ -182,8 +191,17 @@
     </div>
 
     <div class="banners banners--abajo" id="bannersSec2" hidden>
-      <div class="carrusel" id="carrusel2" role="region" aria-roledescription="carrusel" aria-label="Más promociones">
-        <div class="carrusel__pista" id="pista2"></div>
+      <!-- Las flechas viven FUERA de .carrusel, no dentro.
+
+           Un elemento posicionado en absoluto dentro de un contenedor con
+           scroll se desplaza junto al contenido: al pasar al segundo
+           afiche las dos flechas se iban de pantalla y no había cómo
+           volver salvo arrastrando. El marco es el que no se mueve, así
+           que es el que las sostiene. -->
+      <div class="carrusel__marco">
+        <div class="carrusel" id="carrusel2" role="region" aria-roledescription="carrusel" aria-label="Más promociones">
+          <div class="carrusel__pista" id="pista2"></div>
+        </div>
         <button class="flecha flecha--ant" id="ant2" type="button" aria-label="Promoción anterior" hidden>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
         </button>

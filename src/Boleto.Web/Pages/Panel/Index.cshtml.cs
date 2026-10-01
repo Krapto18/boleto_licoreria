@@ -158,12 +158,12 @@ public class IndexModel(CatalogoService svc, IAlmacen almacen, ILogger<IndexMode
                 Grupo = d.Grupo,
                 Precio = d.Precio,
                 PrecioCombo = d.PrecioCombo,
-                ComboAcompanante = d.ComboAcompanante ?? "",
+                ComboAcompanante = Producto.NormalizarOpciones(d.ComboAcompanante),
                 ComboHielo = d.ComboHielo ?? "",
                 /* Si el alta trae nombre, va incluido: nadie escribe el
                    acompañante de un combo para dejarlo apagado. El precio
                    se pone después, en la pestaña de precios. */
-                ComboAcompananteActivo = !string.IsNullOrWhiteSpace(d.ComboAcompanante),
+                ComboAcompananteActivo = Producto.Opciones(d.ComboAcompanante).Length > 0,
                 ComboHieloActivo = !string.IsNullOrWhiteSpace(d.ComboHielo),
                 Promo = d.Promo,
                 Stock = true,
@@ -300,7 +300,7 @@ public class IndexModel(CatalogoService svc, IAlmacen almacen, ILogger<IndexMode
                 Grupo = d.Grupo,
                 Precio = d.Precio,
                 PrecioCombo = d.PrecioCombo,
-                ComboAcompanante = d.ComboAcompanante ?? "",
+                ComboAcompanante = Producto.NormalizarOpciones(d.ComboAcompanante),
                 ComboHielo = d.ComboHielo ?? "",
                 Promo = d.Promo,
                 Orden = d.Orden

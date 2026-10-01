@@ -38,30 +38,51 @@ public class CatalogoService(
 
         var tienda = await db.Tienda.AsNoTracking().FirstOrDefaultAsync(ct) ?? new Tienda();
 
-        var productos = await db.Productos.AsNoTracking()
+        /* La consulta baja el aditivo tal como está en la columna —las
+           opciones separadas por «|»— y se parte en memoria. SQL Server no
+           sabe partir cadenas en un arreglo, y son 59 filas: no hay nada
+           que ganar complicando la consulta. */
+        var filas = await db.Productos.AsNoTracking()
             .Where(p => p.Activo)          // los dados de baja no salen al catálogo
             .OrderBy(p => p.Orden)
-            .Select(p => new ProductoDto
+            .Select(p => new
             {
-                Id = p.Id,
-                N = p.Nombre,
-                V = p.Presentacion,
-                C = p.Categoria,
-                G = p.Grupo,
-                P = p.Precio,
-                Combo = p.PrecioCombo,
+                p.Id,
+                p.Nombre,
+                p.Presentacion,
+                p.Categoria,
+                p.Grupo,
+                p.Precio,
+                p.PrecioCombo,
                 /* Lo apagado no viaja al navegador. Mandarlo y ocultarlo
                    con JavaScript dejaría el dato en el HTML de una página
                    pública, y además la web tendría que decidir algo que
                    ya está decidido en el panel. */
-                Acompanante = p.ComboAcompananteActivo ? p.ComboAcompanante : "",
-                Hielo = p.ComboHieloActivo ? p.ComboHielo : "",
-                Promo = p.Promo,
-                Stock = p.Stock,
-                Col = p.Color,
-                Img = p.Imagen
+                Aco = p.ComboAcompananteActivo ? p.ComboAcompanante : "",
+                Hie = p.ComboHieloActivo ? p.ComboHielo : "",
+                p.Promo,
+                p.Stock,
+                p.Color,
+                p.Imagen
             })
             .ToArrayAsync(ct);
+
+        var productos = filas.Select(f => new ProductoDto
+        {
+            Id = f.Id,
+            N = f.Nombre,
+            V = f.Presentacion,
+            C = f.Categoria,
+            G = f.Grupo,
+            P = f.Precio,
+            Combo = f.PrecioCombo,
+            Acompanantes = Producto.Opciones(f.Aco),
+            Hielo = f.Hie,
+            Promo = f.Promo,
+            Stock = f.Stock,
+            Col = f.Color,
+            Img = f.Imagen
+        }).ToArray();
 
         var logo = ParsearLogo(tienda.LogoHero);
 
@@ -227,7 +248,7 @@ public class CatalogoService(
         Auditar("Precio", p.Precio.ToString("0.00"), d.Precio.ToString("0.00"));
         Auditar("PrecioCombo", p.PrecioCombo?.ToString("0.00") ?? "—",
                                d.PrecioCombo?.ToString("0.00") ?? "—");
-        Auditar("Acompanante", p.ComboAcompanante, d.ComboAcompanante);
+        Auditar("Acompanante", p.ComboAcompanante, Producto.NormalizarOpciones(d.ComboAcompanante));
         Auditar("Hielo", p.ComboHielo, d.ComboHielo);
         Auditar("Promo", p.Promo ? "sí" : "no", d.Promo ? "sí" : "no");
         Auditar("Orden", p.Orden.ToString(), d.Orden.ToString());
@@ -251,10 +272,16 @@ public class CatalogoService(
            pestaña de precios, que es donde se mira el día a día. Si
            después se vuelve al editor y se guarda, se vuelve a afirmar
            lo que dice el campo, que es lo que el editor significa. */
-        p.ComboAcompananteActivo = !string.IsNullOrWhiteSpace(d.ComboAcompanante);
+        /* El aditivo se guarda normalizado: sin opciones vacías, sin
+           repetidas y sin espacios de sobra. Así "Coca Cola | Everest |"
+           y "Coca Cola|Everest" son la misma cosa y la auditoría no
+           registra un cambio donde no lo hubo. */
+        var acoNuevo = Producto.NormalizarOpciones(d.ComboAcompanante);
+
+        p.ComboAcompananteActivo = acoNuevo.Length > 0;
         p.ComboHieloActivo = !string.IsNullOrWhiteSpace(d.ComboHielo);
 
-        p.ComboAcompanante = d.ComboAcompanante;
+        p.ComboAcompanante = acoNuevo;
         p.ComboHielo = d.ComboHielo;
         p.Promo = d.Promo;
         p.Orden = d.Orden;
@@ -530,14 +557,28 @@ public class CatalogoService(
                 string etiqueta, string? nombre, decimal? precio, bool? enCombo,
                 Func<string> leerNombre, Action<string> ponerNombre,
                 Func<decimal> leerPrecio, Action<decimal> ponerPrecio,
-                Func<bool> leerOn, Action<bool> ponerOn)
+                Func<bool> leerOn, Action<bool> ponerOn,
+                int tope = 60, bool opciones = false)
             {
                 if (precio is < 0)
                     throw new InvalidOperationException(
                         $"El precio del {etiqueta} de {p.Nombre} no puede ser negativo.");
 
                 var nom = nombre is null ? leerNombre() : Limpio(nombre);
-                if (nom.Length > 60) nom = nom[..60];
+
+                if (opciones)
+                {
+                    /* Si la lista no entra en la columna se descartan
+                       opciones del final, no se corta por el carácter: un
+                       recorte a ciegas dejaría una última opción partida
+                       —"Ginger Al"— que el cliente vería tal cual. */
+                    var op = Producto.Opciones(nom);
+                    while (op.Length > 1 && string.Join('|', op).Length > tope)
+                        op = op[..^1];
+                    nom = string.Join('|', op);
+                }
+
+                if (nom.Length > tope) nom = nom[..tope];
 
                 // Un combo no puede anunciar que incluye algo sin nombre.
                 if (enCombo == true && nom.Length == 0)
@@ -565,7 +606,8 @@ public class CatalogoService(
             Componer("Aditivo", c.Aditivo, c.AditivoPrecio, c.AditivoEnCombo,
                      () => p.ComboAcompanante, v => p.ComboAcompanante = v,
                      () => p.ComboAcompanantePrecio, v => p.ComboAcompanantePrecio = v,
-                     () => p.ComboAcompananteActivo, v => p.ComboAcompananteActivo = v);
+                     () => p.ComboAcompananteActivo, v => p.ComboAcompananteActivo = v,
+                     tope: 300, opciones: true);
 
             Componer("Hielo", c.Hielo, c.HieloPrecio, c.HieloEnCombo,
                      () => p.ComboHielo, v => p.ComboHielo = v,

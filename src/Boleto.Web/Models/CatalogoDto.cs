@@ -15,7 +15,12 @@ public record ProductoDto
     [JsonPropertyName("g")]     public string G { get; init; } = "";
     [JsonPropertyName("p")]     public decimal P { get; init; }
     [JsonPropertyName("combo")] public decimal? Combo { get; init; }
-    [JsonPropertyName("aco")]   public string Acompanante { get; init; } = "";
+    /// <summary>
+    /// Opciones de aditivo del combo. Vacío si el combo no lleva o está
+    /// apagado; una sola es el caso corriente; varias significan que el
+    /// cliente elige cuál quiere.
+    /// </summary>
+    [JsonPropertyName("aco")]   public string[] Acompanantes { get; init; } = [];
     [JsonPropertyName("hie")]   public string Hielo { get; init; } = "";
     [JsonPropertyName("promo")] public bool Promo { get; init; }
     [JsonPropertyName("stock")] public bool Stock { get; init; }

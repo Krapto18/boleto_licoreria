@@ -158,8 +158,30 @@
        hay nada que componer, igual que el campo de precio de combo ya
        venía deshabilitado.
        ══════════════════════════════════════════════════════════ */
+    /* Lo que el cliente va a ver, devuelto en el acto.
+
+       El aditivo admite varias opciones separadas por «|» y el cliente
+       elige una en la web. Sin esta línea, un separador de más o un nombre
+       repetido solo se descubriría mirando la página publicada. Se aplica
+       la misma limpieza que hace el servidor: sin vacías, sin repetidas,
+       sin espacios de sobra. */
+    function opcionesTexto(texto) {
+        const vistas = new Set();
+        const op = (texto || '').split('|')
+            .map((t) => t.trim())
+            .filter((t) => {
+                if (!t) return false;
+                const k = t.toLowerCase();
+                if (vistas.has(k)) return false;
+                vistas.add(k); return true;
+            });
+        if (!op.length) return 'Sin aditivo.';
+        if (op.length === 1) return 'Una sola opción: el cliente no elige.';
+        return `${op.length} opciones — el cliente elige: ${op.map(esc).join(' · ')}`;
+    }
+
     function filaCombo(p) {
-        const parte = (clave, etiqueta, marcador) => {
+        const parte = (clave, etiqueta, marcador, lista) => {
             const on = p[clave + 'On'];
             return `
         <div class="adit" data-on="${on}">
@@ -168,11 +190,12 @@
             <span>${etiqueta}</span>
           </label>
           <input class="adit__n" type="text" data-nom="${clave}" data-id="${p.id}"
-                 value="${esc(p[clave] || '')}" placeholder="${marcador}" maxlength="60"
+                 value="${esc(p[clave] || '')}" placeholder="${marcador}" maxlength="${lista ? 300 : 60}"
                  aria-label="Qué ${etiqueta.toLowerCase()} lleva el combo de ${esc(p.n)}">
           <input class="adit__p" type="number" data-pre="${clave}" data-id="${p.id}"
                  value="${(+p[clave + 'P'] || 0).toFixed(2)}" step="0.10" min="0" inputmode="decimal"
                  aria-label="Precio suelto del ${etiqueta.toLowerCase()} de ${esc(p.n)}">
+          ${lista ? `<p class="adit__ops" data-ops="${p.id}">${opcionesTexto(p[clave])}</p>` : ''}
         </div>`;
         };
 
@@ -180,7 +203,7 @@
       <div class="combo">
         <p class="combo__t">El combo incluye <small>— el precio de cada parte no
           se publica: sirve para saber qué estás regalando</small></p>
-        ${parte('aco', 'Aditivo', 'Gaseosa, ginger, energizante…')}
+        ${parte('aco', 'Aditivo', 'Coca Cola 1.5 L | Everest 1.5 L | Ginger 1 L', true)}
         ${parte('hie', 'Hielo', 'Hielo 3 kg')}
         <p class="combo__suma" data-suma="${p.id}">${suma(p)}</p>
       </div>`;
@@ -236,6 +259,10 @@
             /* Marcado pero sin nombre es un combo que anuncia algo que no
                dice cuál. Se señala acá y el servidor lo vuelve a revisar. */
             el.classList.toggle('mal', p[clave + 'On'] && !el.value.trim());
+            /* La vista previa se refresca mientras se escribe: el dueño
+               ve cómo quedaron separadas antes de publicar. */
+            const ops = $(`[data-ops="${p.id}"]`);
+            if (ops && clave === 'aco') ops.innerHTML = opcionesTexto(el.value);
         } else {
             const v = parseFloat(el.value);
             if (el.value === '' || isNaN(v) || v < 0) { el.classList.add('mal'); return; }

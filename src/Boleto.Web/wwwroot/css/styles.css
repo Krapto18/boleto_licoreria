@@ -948,6 +948,66 @@ a {
     line-height: 1.25
 }
 
+/* ── Elegir el acompañante del combo ──────────────────────────
+   Solo aparece cuando el dueño cargó más de una opción. Con una sola no
+   hay nada que elegir y se sigue viendo como texto, igual que siempre.
+
+   El control nativo se queda nativo: en el teléfono abre la rueda del
+   sistema, que es el patrón que el cliente ya conoce y no hay que volver
+   a enseñarle. Solo se le cambia la piel para que no desentone con la
+   tarjeta. */
+.elige {
+    display: block;
+    margin-top: 7px
+}
+
+.elige__t {
+    display: block;
+    font-size: .6rem;
+    font-weight: 600;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+    color: var(--tx-gris);
+    margin-bottom: 3px
+}
+
+.elige__sel {
+    width: 100%;
+    min-height: 44px;
+    padding: 6px 32px 6px 10px;
+    border: 1px solid rgba(11,20,54,.18);
+    border-radius: 9px;
+    background-color: var(--crema-2);
+    color: var(--tx-oscuro);
+    font-family: inherit;
+    font-size: .78rem;
+    font-weight: 600;
+    line-height: 1.25;
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%230B1436' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    background-size: 13px;
+    /* Un nombre largo se recorta con puntos suspensivos en vez de quedar
+       cortado a mitad de letra: el dueño elige los nombres y en una
+       tarjeta angosta "Ginger Ale Canada Dry 1 L" no entra. */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap
+}
+
+/* iOS amplía la página al enfocar un control con letra menor a 16 px y no
+   la devuelve: la tarjeta queda descuadrada y hay que pellizcar para
+   salir. En el teléfono el selector va a 16 px, que es lo único que lo
+   evita. Entra igual, porque ocupa todo el ancho de la tarjeta. */
+@media(max-width:620px) {
+    .elige__sel {
+        font-size: 16px
+    }
+}
+
 .card__f {
     margin-top: auto;
     padding-top: 10px
@@ -1762,6 +1822,17 @@ img.i-wa {
    lean como dos pistas y no como una sola que se partió. */
 .banners--abajo {
     margin-top: 18px
+}
+
+/* El marco no hace scroll: por eso es el que sostiene las flechas.
+
+   Estaban dentro de .carrusel, que sí lo hace, y un elemento posicionado
+   en absoluto dentro de un contenedor con scroll viaja con el contenido:
+   al pasar al segundo afiche las dos flechas se iban de pantalla. Ocurría
+   igual en el teléfono y en el escritorio; en el teléfono se notaba menos
+   porque ahí se arrastra con el dedo. */
+.carrusel__marco {
+    position: relative
 }
 
 .carrusel {

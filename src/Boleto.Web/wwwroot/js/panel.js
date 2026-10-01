@@ -177,8 +177,15 @@
                 if (vistas.has(k)) return false;
                 vistas.add(k); return true;
             });
-        if (!op.length) return 'Sin aditivo.';
-        if (op.length === 1) return 'Una sola opción: el cliente no elige.';
+        /* Con una sola opción se dice CÓMO agregar más. El marcador del
+           campo trae el ejemplo, pero un producto que ya tiene aditivo
+           nunca está vacío, asi que ese marcador no se ve nunca y la
+           función quedaba escondida. */
+        if (!op.length)
+            return 'Sin aditivo. Escribe uno, o varios separados por | para que el cliente elija.';
+        if (op.length === 1)
+            return 'Una sola opción: el cliente no elige. Separa con | para ofrecerle varias — '
+                 + 'Coca Cola 1.5 L | Fanta 1.5 L | Sprite 1.5 L';
         return `${op.length} opciones — el cliente elige: ${op.map(esc).join(' · ')}`;
     }
 

@@ -347,6 +347,25 @@
     const lleva = partesDe(p);
     const op = p.aco || [];
 
+    /* El selector de sabor solo existe si hay de dónde elegir. Un desplegable
+       de un elemento es un control que no decide nada. */
+    const selector = op.length < 2 ? '' : `
+        <select class="arma__sel" data-elige="${p.id}" ${lleva.aco ? '' : 'disabled'}
+                aria-label="Acompañante del combo de ${esc(p.n)}">
+          ${op.map((o) => `<option value="${esc(o)}"${o === acoDe(p) ? ' selected' : ''}>${esc(o)}</option>`).join('')}
+        </select>`;
+
+    /* Con una sola parte no hay nada que sacar —sacarla dejaría el combo
+       vacío—, así que la casilla seria un control que nunca responde. Se
+       muestra como texto. Si esa única parte tiene varios sabores, el
+       selector sigue apareciendo: ahí sí hay algo que decidir. */
+    if (ofre.length < 2) {
+      if (op.length > 1)
+        return `<div class="arma"><p class="arma__t">Elige tu acompañante</p>${selector}</div>`;
+      const todo = [...op, p.hie].filter(Boolean).map(esc).join(' · ');
+      return `<p class="seg__note">${todo ? '+ ' + todo : '&nbsp;'}</p>`;
+    }
+
     const fila = (clave, etiqueta, extra) => `
         <label class="arma__f">
           <input type="checkbox" data-parte="${clave}" data-id="${p.id}"
@@ -355,20 +374,8 @@
         </label>${extra || ''}`;
 
     let html = `<div class="arma"><p class="arma__t">Arma tu combo</p>`;
-
-    if (op.length) {
-      /* Con una sola opción el nombre va en la propia casilla: un selector
-         de un elemento es un control que no decide nada. */
-      const selector = op.length < 2 ? '' : `
-        <select class="arma__sel" data-elige="${p.id}" ${lleva.aco ? '' : 'disabled'}
-                aria-label="Acompañante del combo de ${esc(p.n)}">
-          ${op.map((o) => `<option value="${esc(o)}"${o === acoDe(p) ? ' selected' : ''}>${esc(o)}</option>`).join('')}
-        </select>`;
-      html += fila('aco', op.length > 1 ? 'Acompañante' : op[0], selector);
-    }
-
+    if (op.length) html += fila('aco', op.length > 1 ? 'Acompañante' : op[0], selector);
     if (p.hie) html += fila('hie', p.hie);
-
     html += `<p class="arma__n" data-aviso="${p.id}">&nbsp;</p></div>`;
     return html;
   }

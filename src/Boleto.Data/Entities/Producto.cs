@@ -23,9 +23,14 @@ public class Producto
                   Es lo único que ve el cliente.
          Precio   cuánto costaría suelto. No se publica: le sirve al
                   dueño para saber qué está regalando al fijar el combo.
-         Activo   si va incluido. Apagarlo saca el ítem del combo sin
-                  perder ni el nombre ni el precio, para poder volver a
-                  encenderlo cuando haya stock del aditivo.
+         Activo   si la tienda lo ofrece. Apagarlo saca el ítem del combo
+                  sin perder ni el nombre ni el precio, para poder volver
+                  a encenderlo cuando haya stock del aditivo.
+         Descuento cuánto se le baja al combo si el CLIENTE decide no
+                  llevarlo. Cero —el valor por defecto— significa que el
+                  combo es un precio de paquete: quien no quiere el hielo
+                  no lo recibe y paga lo mismo. Lo decide el vendedor,
+                  producto por producto.
 
        El aditivo admite VARIAS opciones separadas por «|»:
 
@@ -41,10 +46,12 @@ public class Producto
     [MaxLength(300)] public string ComboAcompanante { get; set; } = "";
     public decimal ComboAcompanantePrecio { get; set; }
     public bool ComboAcompananteActivo { get; set; }
+    public decimal ComboAcompananteDescuento { get; set; }
 
     [MaxLength(60)] public string ComboHielo { get; set; } = "";
     public decimal ComboHieloPrecio { get; set; }
     public bool ComboHieloActivo { get; set; }
+    public decimal ComboHieloDescuento { get; set; }
 
     /// <summary>Aplica a la promoción de Coca Cola gratis (whiskys y rones).</summary>
     public bool Promo { get; set; }

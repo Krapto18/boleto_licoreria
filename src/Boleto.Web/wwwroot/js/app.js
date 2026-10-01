@@ -33,6 +33,7 @@
   const carrito = new Map();
   const modos   = new Map();
   const elige   = new Map();   // id -> aditivo elegido para el combo
+  const quita   = new Map();   // id -> Set de partes que el cliente sacó
   let grupo = 'Todo', busca = '', ultima = null, toastT = null, yaAbrio = false;
   let confirmado = false;   // declaración de mayoría de edad
   let envio = null;         // zona elegida: { n, c, t }
@@ -47,7 +48,40 @@
 
   const keyOf    = (id, m) => `${id}|${m}`;
   const modoDe   = (p) => modos.get(p.id) || 'botella';
-  const precioDe = (p, m) => (m === 'combo' && p.combo ? p.combo : p.p);
+  /* Qué partes ofrece el dueño para este combo. Lo que apagó en el panel
+     no llega siquiera al navegador, así que acá solo queda lo ofrecido. */
+  const ofrecidas = (p) => {
+    const l = [];
+    if ((p.aco || []).length) l.push('aco');
+    if (p.hie) l.push('hie');
+    return l;
+  };
+
+  /* Qué partes se lleva, según lo que armó el cliente. El dueño decide
+     qué se ofrece; el cliente, qué entra en su combo. */
+  const partesDe = (p) => {
+    const fuera = quita.get(p.id);
+    return {
+      aco: (p.aco || []).length > 0 && !fuera?.has('aco'),
+      hie: !!p.hie && !fuera?.has('hie'),
+    };
+  };
+
+  /* El combo baja solo lo que el vendedor haya decidido descontar por cada
+     parte que el cliente no se lleva. Con el descuento en cero —el caso
+     normal— el combo es un precio de paquete: no lo recibe, paga igual.
+
+     El tope contra el precio de la botella lo valida el servidor al
+     publicar. Acá se repite porque el navegador puede tener cacheado un
+     catálogo viejo, y un combo más barato que la botella se nota. */
+  const precioDe = (p, m) => {
+    if (m !== 'combo' || !p.combo) return p.p;
+    const lleva = partesDe(p);
+    let t = p.combo;
+    if (!lleva.aco) t -= +p.acoD || 0;
+    if (!lleva.hie) t -= +p.hieD || 0;
+    return Math.max(t, p.p);
+  };
 
   /* Qué aditivo lleva el combo de este producto.
 
@@ -292,36 +326,51 @@
     }).join('');
   }
 
-  /* Qué lleva el combo.
+  /* Armar el combo.
 
-     Con un solo aditivo es una línea de texto, como siempre. Con varios,
-     el cliente elige: uno quiere Coca Cola y otro quiere Everest, y hasta
-     ahora el que quería Everest tenía que escribirlo aparte en el
-     WhatsApp — o no pedirlo.
+     Hasta acá el combo era un paquete cerrado: si traía gaseosa y hielo,
+     el cliente se llevaba las dos o no pedía combo. Quien no tenía dónde
+     meter 3 kg de hielo terminaba pidiendo la botella sola.
 
-     Es un <select> nativo y no una lista propia a propósito: en el
-     teléfono abre la rueda del sistema, que es un objetivo grande y
-     familiar sin diseñar nada, y en el escritorio se recorre con el
-     teclado sin programarlo. Una lista a medida habría que hacerla
-     accesible desde cero. */
+     Ahora cada parte se puede sacar, con una excepción: no se pueden
+     sacar todas. Un combo sin nada adentro es una botella, y para eso
+     está el botón de al lado.
+
+     El acompañante, además, elige sabor cuando el dueño cargó varias
+     opciones. Es un <select> nativo a propósito: en el teléfono abre la
+     rueda del sistema, que es un objetivo grande y conocido, y en el
+     escritorio se recorre con el teclado sin programar nada. */
   function extrasCombo(p) {
+    const ofre = ofrecidas(p);
+    if (!ofre.length) return '<p class="seg__note">&nbsp;</p>';
+
+    const lleva = partesDe(p);
     const op = p.aco || [];
 
-    if (op.length < 2) {
-      const todo = [...op, p.hie].filter(Boolean).map(esc).join(' · ');
-      return `<p class="seg__note">${todo ? '+ ' + todo : '&nbsp;'}</p>`;
+    const fila = (clave, etiqueta, extra) => `
+        <label class="arma__f">
+          <input type="checkbox" data-parte="${clave}" data-id="${p.id}"
+                 ${lleva[clave] ? 'checked' : ''}>
+          <span class="arma__e">${esc(etiqueta)}</span>
+        </label>${extra || ''}`;
+
+    let html = `<div class="arma"><p class="arma__t">Arma tu combo</p>`;
+
+    if (op.length) {
+      /* Con una sola opción el nombre va en la propia casilla: un selector
+         de un elemento es un control que no decide nada. */
+      const selector = op.length < 2 ? '' : `
+        <select class="arma__sel" data-elige="${p.id}" ${lleva.aco ? '' : 'disabled'}
+                aria-label="Acompañante del combo de ${esc(p.n)}">
+          ${op.map((o) => `<option value="${esc(o)}"${o === acoDe(p) ? ' selected' : ''}>${esc(o)}</option>`).join('')}
+        </select>`;
+      html += fila('aco', op.length > 1 ? 'Acompañante' : op[0], selector);
     }
 
-    const sel = acoDe(p);
-    return `
-      <label class="elige">
-        <span class="elige__t">Elige tu acompañante</span>
-        <select class="elige__sel" data-elige="${p.id}"
-                aria-label="Acompañante del combo de ${esc(p.n)}">
-          ${op.map((o) => `<option value="${esc(o)}"${o === sel ? ' selected' : ''}>${esc(o)}</option>`).join('')}
-        </select>
-      </label>
-      <p class="seg__note">${p.hie ? '+ ' + esc(p.hie) : '&nbsp;'}</p>`;
+    if (p.hie) html += fila('hie', p.hie);
+
+    html += `<p class="arma__n" data-aviso="${p.id}">&nbsp;</p></div>`;
+    return html;
   }
 
   function control(p, modo) {
@@ -359,6 +408,9 @@
      cliente acaba de tocarlo — en el teléfono eso cierra la rueda a media
      elección. */
   $('#grid').addEventListener('change', (e) => {
+    const casilla = e.target.closest('[data-parte]');
+    if (casilla) return armar(casilla);
+
     const s = e.target.closest('[data-elige]');
     if (!s) return;
     const id = s.dataset.elige;
@@ -373,13 +425,50 @@
     guardar(); actualizar();
   });
 
+  /* Sacar o poner una parte del combo.
+
+     Si es la última que queda se devuelve la marca y se dice por qué.
+     Dejar la casilla desmarcada y el combo vacío cobraría precio de combo
+     por una botella sola; deshabilitar la casilla no explicaría nada. */
+  function armar(casilla) {
+    const id = casilla.dataset.id, clave = casilla.dataset.parte;
+    const p = PRODUCTOS.find((x) => x.id === id);
+    if (!p) return;
+
+    const fuera = new Set(quita.get(id) || []);
+
+    if (!casilla.checked) {
+      const quedan = ofrecidas(p).filter((k) => k !== clave && !fuera.has(k));
+      if (!quedan.length) {
+        casilla.checked = true;
+        const aviso = $(`[data-aviso="${id}"]`);
+        if (aviso) aviso.textContent =
+          'El combo lleva al menos una cosa. Si no quieres nada, elige Botella.';
+        return;
+      }
+      fuera.add(clave);
+    } else fuera.delete(clave);
+
+    quita.set(id, fuera);
+
+    /* Si ya está en el pedido hay que rehacer el renglón: cambió el precio
+       y cambió lo que la tienda tiene que mandar. */
+    const k = keyOf(id, 'combo');
+    if (carrito.has(k))
+      carrito.set(k, { ...carrito.get(k), precio: precioDe(p, 'combo'),
+                       lleva: partesDe(p), elegido: acoDe(p) });
+
+    pintar(); actualizar(); guardar();
+  }
+
   function mover(id, d, silencio) {
     const p = PRODUCTOS.find((x) => x.id === id);
     if (!p || p.stock === false) return;
     const modo = modoDe(p), k = keyOf(id, modo);
     const q = (carrito.get(k)?.q || 0) + d;
     if (q <= 0) carrito.delete(k);
-    else carrito.set(k, { ...p, modo, precio: precioDe(p, modo), q, elegido: acoDe(p) });
+    else carrito.set(k, { ...p, modo, precio: precioDe(p, modo), q,
+                          elegido: acoDe(p), lleva: partesDe(p) });
 
     pintar(); actualizar(); guardar();
 
@@ -395,21 +484,30 @@
   function guardar() {
     try {
       localStorage.setItem(LS_PEDIDO, JSON.stringify(
-        [...carrito.values()].map((i) => ({ id: i.id, modo: i.modo, q: i.q, eleg: i.elegido || '' }))));
+        [...carrito.values()].map((i) => ({ id: i.id, modo: i.modo, q: i.q, eleg: i.elegido || '',
+                      sin: [...(quita.get(i.id) || [])] }))));
     } catch (_) { /* modo privado */ }
   }
   function recuperar() {
     try {
       const raw = localStorage.getItem(LS_PEDIDO);
       if (!raw) return;
-      JSON.parse(raw).forEach(({ id, modo, q, eleg }) => {
+      JSON.parse(raw).forEach(({ id, modo, q, eleg, sin }) => {
         const p = PRODUCTOS.find((x) => x.id === id);
         if (!p || p.stock === false) return;   // se cayó del catálogo o se agotó
         modos.set(id, modo);
         /* La opción guardada puede haber desaparecido del panel desde la
            última visita: solo se restaura si sigue existiendo. */
         if (eleg && (p.aco || []).includes(eleg)) elige.set(id, eleg);
-        carrito.set(keyOf(id, modo), { ...p, modo, precio: precioDe(p, modo), q, elegido: acoDe(p) });
+
+        /* Lo mismo con las partes que había sacado. Si entre medio el dueño
+           apagó las otras, restaurar el quitado dejaría un combo vacío: en
+           ese caso se ignora y vuelve completo. */
+        const fuera = new Set((sin || []).filter((k) => ofrecidas(p).includes(k)));
+        if (fuera.size && fuera.size < ofrecidas(p).length) quita.set(id, fuera);
+
+        carrito.set(keyOf(id, modo), { ...p, modo, precio: precioDe(p, modo), q,
+                                       elegido: acoDe(p), lleva: partesDe(p) });
       });
       if (carrito.size) toast('Recuperamos tu pedido anterior');
     } catch (_) { /* ignorar */ }
@@ -447,8 +545,8 @@
     const lineas = items.map((i) => {
       let l = `• ${i.q}× ${i.n} ${i.v} — ${money(i.precio * i.q)}`;
       if (i.modo === 'combo') {
-        if (i.elegido) l += `\n    ↳ ${i.elegido}`;
-        if (i.hie) l += `\n    ↳ ${i.hie}`;
+        if (i.lleva?.aco && i.elegido) l += `\n    ↳ ${i.elegido}`;
+        if (i.lleva?.hie && i.hie) l += `\n    ↳ ${i.hie}`;
       }
       return l;
     }).join('\n');

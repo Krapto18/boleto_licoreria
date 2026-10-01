@@ -29,7 +29,8 @@
         return {
             ...p,
             aco: t.aco ?? '', acoP: +(t.acoP ?? 0), acoOn: !!t.acoOn,
-            hie: t.hie ?? '', hieP: +(t.hieP ?? 0), hieOn: !!t.hieOn
+            hie: t.hie ?? '', hieP: +(t.hieP ?? 0), hieOn: !!t.hieOn,
+            acoD: +(t.acoD ?? 0), hieD: +(t.hieD ?? 0)
         };
     };
 
@@ -41,7 +42,8 @@
     /* Los campos del combo que se editan en esta pestaña. Tenerlos en una
        lista evita el clásico: agregar un campo, olvidarlo en `cambiado` y
        que el borrador se pierda al recargar sin que nadie lo note. */
-    const CAMPOS = ['p', 'combo', 'stock', 'aco', 'acoP', 'acoOn', 'hie', 'hieP', 'hieOn'];
+    const CAMPOS = ['p', 'combo', 'stock', 'aco', 'acoP', 'acoOn', 'hie', 'hieP', 'hieOn',
+                    'acoD', 'hieD'];
 
     const base = (id) => BASE.find((p) => p.id === id);
     const cambiado = (p) => {
@@ -196,6 +198,12 @@
                  value="${(+p[clave + 'P'] || 0).toFixed(2)}" step="0.10" min="0" inputmode="decimal"
                  aria-label="Precio suelto del ${etiqueta.toLowerCase()} de ${esc(p.n)}">
           ${lista ? `<p class="adit__ops" data-ops="${p.id}">${opcionesTexto(p[clave])}</p>` : ''}
+          <label class="adit__d">
+            <span>Si el cliente lo saca, descuenta</span>
+            <input type="number" data-desc="${clave}" data-id="${p.id}"
+                   value="${(+p[clave + 'D'] || 0).toFixed(2)}" step="0.10" min="0" inputmode="decimal"
+                   aria-label="Descuento si el cliente saca el ${etiqueta.toLowerCase()} del combo de ${esc(p.n)}">
+          </label>
         </div>`;
         };
 
@@ -222,7 +230,15 @@
         const cierre = Math.abs(dif) < 0.005
             ? 'igual que el combo'
             : dif < 0 ? `el combo cobra ${money(-dif)} menos` : `el combo cobra ${money(dif)} más`;
-        return `${partes.join(' + ')} = ${money(t)} · ${cierre}`;
+        /* Lo que el cliente va a pagar si arma el combo sin alguna parte.
+           Es el efecto real de los descuentos y conviene verlo al lado del
+           numero, no tener que calcularlo de cabeza. */
+        const sin = [];
+        if (p.acoOn && +p.acoD) sin.push(`sin aditivo ${money(Math.max((p.combo ?? 0) - (+p.acoD || 0), p.p))}`);
+        if (p.hieOn && +p.hieD) sin.push(`sin hielo ${money(Math.max((p.combo ?? 0) - (+p.hieD || 0), p.p))}`);
+        const cola = sin.length ? ` · el cliente paga ${sin.join(' y ')}` : '';
+
+        return `${partes.join(' + ')} = ${money(t)} · ${cierre}${cola}`;
     }
 
     function refrescarSuma(id) {
@@ -249,7 +265,7 @@
        de precios porque comparten el evento y estos traen data-id. */
     $('#tabla').addEventListener('input', (e) => {
         const el = e.target;
-        const clave = el.dataset.nom || el.dataset.pre;
+        const clave = el.dataset.nom || el.dataset.pre || el.dataset.desc;
         if (!clave) return;
         const p = draft.find((x) => x.id === el.dataset.id);
         if (!p) return;
@@ -267,7 +283,7 @@
             const v = parseFloat(el.value);
             if (el.value === '' || isNaN(v) || v < 0) { el.classList.add('mal'); return; }
             el.classList.remove('mal');
-            p[clave + 'P'] = v;
+            if (el.dataset.desc) p[clave + 'D'] = v; else p[clave + 'P'] = v;
         }
         refrescarSuma(p.id);
         marcarFila(p.id);
@@ -465,7 +481,8 @@
                 body: JSON.stringify(cs.map((p) => ({
                     id: p.id, precio: p.p, precioCombo: p.combo, stock: p.stock,
                     aditivo: p.aco ?? '', aditivoPrecio: +p.acoP || 0, aditivoEnCombo: !!p.acoOn,
-                    hielo: p.hie ?? '', hieloPrecio: +p.hieP || 0, hieloEnCombo: !!p.hieOn
+                    hielo: p.hie ?? '', hieloPrecio: +p.hieP || 0, hieloEnCombo: !!p.hieOn,
+                    aditivoDescuento: +p.acoD || 0, hieloDescuento: +p.hieD || 0
                 })))
             });
 

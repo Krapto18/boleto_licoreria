@@ -22,6 +22,12 @@ public record ProductoDto
     /// </summary>
     [JsonPropertyName("aco")]   public string[] Acompanantes { get; init; } = [];
     [JsonPropertyName("hie")]   public string Hielo { get; init; } = "";
+
+    /* Cuánto baja el combo si el cliente saca esa parte. Cero es lo normal
+       y significa "el combo es un precio de paquete": no lo recibe, paga
+       lo mismo. Lo decide el vendedor en el panel, producto por producto. */
+    [JsonPropertyName("acoD")]  public decimal AcompananteDescuento { get; init; }
+    [JsonPropertyName("hieD")]  public decimal HieloDescuento { get; init; }
     [JsonPropertyName("promo")] public bool Promo { get; init; }
     [JsonPropertyName("stock")] public bool Stock { get; init; }
     [JsonPropertyName("col")]   public string Col { get; init; } = "";
@@ -89,4 +95,5 @@ public record CatalogoDto(ConfigDto Config, string[] Grupos, ProductoDto[] Produ
 public record CambioDto(
     string Id, decimal Precio, decimal? PrecioCombo, bool Stock,
     string? Aditivo = null, decimal? AditivoPrecio = null, bool? AditivoEnCombo = null,
-    string? Hielo = null, decimal? HieloPrecio = null, bool? HieloEnCombo = null);
+    string? Hielo = null, decimal? HieloPrecio = null, bool? HieloEnCombo = null,
+    decimal? AditivoDescuento = null, decimal? HieloDescuento = null);

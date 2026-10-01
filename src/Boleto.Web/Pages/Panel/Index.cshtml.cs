@@ -57,6 +57,8 @@ public class IndexModel(CatalogoService svc, IAlmacen almacen, ILogger<IndexMode
             hie = p.ComboHielo,
             hieP = p.ComboHieloPrecio,
             hieOn = p.ComboHieloActivo,
+            acoD = p.ComboAcompananteDescuento,
+            hieD = p.ComboHieloDescuento,
             promo = p.Promo,
             stock = p.Stock,
             activo = p.Activo,

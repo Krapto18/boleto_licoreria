@@ -948,48 +948,84 @@ a {
     line-height: 1.25
 }
 
-/* ── Elegir el acompañante del combo ──────────────────────────
-   Solo aparece cuando el dueño cargó más de una opción. Con una sola no
-   hay nada que elegir y se sigue viendo como texto, igual que siempre.
+/* ── Armar el combo ───────────────────────────────────────────
+   Una fila por parte: casilla para llevarla o no, y debajo el selector
+   de sabor cuando el dueño cargó varias opciones.
+
+   Van apiladas y no en línea porque en el teléfono la tarjeta mide 147 px
+   por dentro: una casilla más un selector en la misma fila dejaría el
+   selector en 117 px, donde "Coca Cola 1.5 L" no entra.
 
    El control nativo se queda nativo: en el teléfono abre la rueda del
-   sistema, que es el patrón que el cliente ya conoce y no hay que volver
-   a enseñarle. Solo se le cambia la piel para que no desentone con la
-   tarjeta. */
-.elige {
-    display: block;
-    margin-top: 7px
+   sistema, que es el patrón que el cliente ya conoce. Solo se le cambia
+   la piel para que no desentone con la tarjeta. */
+.arma {
+    margin-top: 8px
 }
 
-.elige__t {
-    display: block;
+.arma__t {
     font-size: .6rem;
     font-weight: 600;
     letter-spacing: .05em;
     text-transform: uppercase;
     color: var(--tx-gris);
-    margin-bottom: 3px
+    margin-bottom: 4px
 }
 
-.elige__sel {
+.arma__f {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 40px;
+    cursor: pointer;
+    font-size: .72rem;
+    line-height: 1.25
+}
+
+    .arma__f input {
+        width: 20px;
+        height: 20px;
+        flex-shrink: 0;
+        accent-color: var(--rojo);
+        cursor: pointer
+    }
+
+/* Lo que no se lleva sigue leyéndose, pero sin pedir atención: el combo
+   lo ofrece, el cliente no lo quiso. */
+.arma__f:has(input:not(:checked)) .arma__e {
+    opacity: .5;
+    text-decoration: line-through
+}
+
+.arma__sel {
     width: 100%;
     min-height: 44px;
-    padding: 6px 32px 6px 10px;
+    /* Sin sangría bajo la casilla: en el teléfono la tarjeta mide 147 px
+       por dentro y los 28 px de sangría dejaban "Coca Cola 1.5 L" cortado
+       en "Coca C...". La jerarquía ya la da el título "Arma tu combo" y el
+       orden; la sangría costaba más de lo que ordenaba. */
+    margin: 2px 0;
+    /* Relleno al hueso: en el teléfono quedan 147 px de tarjeta y el
+       nombre tiene que entrar entero. Medido, "Coca Cola 1.5 L" pide
+       111 px y acá quedan 117. */
+    padding: 6px 22px 6px 8px;
     border: 1px solid rgba(11,20,54,.18);
     border-radius: 9px;
     background-color: var(--crema-2);
     color: var(--tx-oscuro);
     font-family: inherit;
     font-size: .78rem;
-    font-weight: 600;
+    /* 500 y no 600: la semibold ganaba 4 px de ancho que en el teléfono
+       son la diferencia entre leer el nombre y leer "Coca C...". */
+    font-weight: 500;
     line-height: 1.25;
     cursor: pointer;
     appearance: none;
     -webkit-appearance: none;
     background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%230B1436' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
-    background-position: right 10px center;
-    background-size: 13px;
+    background-position: right 7px center;
+    background-size: 12px;
     /* Un nombre largo se recorta con puntos suspensivos en vez de quedar
        cortado a mitad de letra: el dueño elige los nombres y en una
        tarjeta angosta "Ginger Ale Canada Dry 1 L" no entra. */
@@ -998,12 +1034,27 @@ a {
     white-space: nowrap
 }
 
+    .arma__sel:disabled {
+        opacity: .45;
+        cursor: default
+    }
+
+/* El aviso de "el combo lleva al menos una cosa". Reserva su renglón
+   siempre, para que al aparecer no empuje el botón de agregar. */
+.arma__n {
+    font-size: .64rem;
+    line-height: 1.3;
+    color: var(--rojo);
+    min-height: 1.3em;
+    margin-top: 2px
+}
+
 /* iOS amplía la página al enfocar un control con letra menor a 16 px y no
    la devuelve: la tarjeta queda descuadrada y hay que pellizcar para
    salir. En el teléfono el selector va a 16 px, que es lo único que lo
    evita. Entra igual, porque ocupa todo el ancho de la tarjeta. */
 @media(max-width:620px) {
-    .elige__sel {
+    .arma__sel {
         font-size: 16px
     }
 }

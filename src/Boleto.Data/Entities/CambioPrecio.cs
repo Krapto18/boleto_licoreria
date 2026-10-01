@@ -13,11 +13,18 @@ public class CambioPrecio
     [MaxLength(40)] public string ProductoId { get; set; } = "";
     [MaxLength(120)] public string ProductoNombre { get; set; } = "";
 
-    /// <summary>Precio, PrecioCombo o Stock.</summary>
-    [MaxLength(20)] public string Campo { get; set; } = "";
+    /// <summary>Precio, PrecioCombo, Stock, ComboAditivoDescuento…</summary>
+    [MaxLength(40)] public string Campo { get; set; } = "";
 
-    [MaxLength(20)] public string ValorAnterior { get; set; } = "";
-    [MaxLength(20)] public string ValorNuevo { get; set; } = "";
+    /* 160 y no 20. El aditivo del combo dejó de ser un nombre suelto: ahora
+       puede traer varias opciones separadas por «|», y "Coca Cola 1.5 L|
+       Everest 1.5 L|Ginger Ale 1 L" son 43 caracteres. Con 20, registrar el
+       cambio guardaba "Coca Cola 1.5 L|Ever" —que no sirve para auditar
+       nada— y, peor, el camino de publicar escribía el valor crudo y SQL
+       Server abortaba la operación entera: el panel devolvía 500 y no se
+       publicaba nada. */
+    [MaxLength(160)] public string ValorAnterior { get; set; } = "";
+    [MaxLength(160)] public string ValorNuevo { get; set; } = "";
 
     [MaxLength(120)] public string Usuario { get; set; } = "";
     public DateTime FechaUtc { get; set; } = DateTime.UtcNow;

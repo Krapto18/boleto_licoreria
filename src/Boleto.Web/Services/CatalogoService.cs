@@ -238,9 +238,9 @@ public class CatalogoService(
             {
                 ProductoId = p.Id,
                 ProductoNombre = p.Nombre,
-                Campo = campo,
-                ValorAnterior = Corta(antes),
-                ValorNuevo = Corta(ahora),
+                Campo = Corta(campo, TopeCampo),
+                ValorAnterior = Corta(antes, TopeValor),
+                ValorNuevo = Corta(ahora, TopeValor),
                 Usuario = usuario
             });
         }
@@ -324,7 +324,12 @@ public class CatalogoService(
         log.LogInformation("{Usuario} {Accion} {Id}", usuario, activo ? "reactivó" : "dio de baja", id);
     }
 
-    private static string Corta(string s) => s.Length > 20 ? s[..20] : s;
+    /* Los valores del registro de cambios se recortan al ancho de su
+       columna. No es cosmético: pasarse hace que SQL Server corte la
+       operación entera, y lo que el dueño ve es un 500 sin explicación. */
+    private const int TopeCampo = 40;
+    private const int TopeValor = 160;
+    private static string Corta(string s, int tope) => s.Length > tope ? s[..tope] : s;
 
     /// <summary>Alta de un producto nuevo desde el panel.</summary>
     public async Task CrearProductoAsync(Producto p, CancellationToken ct = default)
@@ -519,9 +524,12 @@ public class CatalogoService(
                 {
                     ProductoId = p.Id,
                     ProductoNombre = p.Nombre,
-                    Campo = campo,
-                    ValorAnterior = antes,
-                    ValorNuevo = ahora,
+                    /* Recortado también acá. Este camino escribía el
+                       valor crudo y era el que rompía al publicar un
+                       aditivo con varias opciones. */
+                    Campo = Corta(campo, TopeCampo),
+                    ValorAnterior = Corta(antes, TopeValor),
+                    ValorNuevo = Corta(ahora, TopeValor),
                     Usuario = usuario
                 });
 
